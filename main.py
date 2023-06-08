@@ -46,6 +46,8 @@ class MainWindow(QMainWindow):
 
         help_menu = menu_bar.addMenu('Help')
 
+        self.central_widget.setStyleSheet('border: 1px solid red') # TODO testing purposes, remove later
+
 
 class LeftMenu(QWidget):
     def __init__(self):
@@ -108,6 +110,8 @@ class StyleTransferMenu(QWidget):
 
         left_container = QWidget()
         right_container = QWidget()
+        left_container.setStyleSheet('border: 1px solid blue')
+        right_container.setStyleSheet('border: 1px solid green')
         layout.addWidget(left_container)
         layout.addWidget(right_container)
 
@@ -118,6 +122,7 @@ class StyleTransferMenu(QWidget):
         left_container_layout.addWidget(upper_stylization_container)
         left_container_layout.addStretch()
         left_container_layout.addWidget(lower_stylization_container)
+        left_container.setLayout(left_container_layout)
 
         # upper stylization container
         upper_stylization_buttons_container = QWidget()
@@ -125,6 +130,7 @@ class StyleTransferMenu(QWidget):
         upper_stylization_container_layout = QHBoxLayout()
         upper_stylization_container_layout.addWidget(upper_stylization_buttons_container)
         upper_stylization_container_layout.addWidget(upper_stylization_image_container)
+        upper_stylization_container.setLayout(upper_stylization_container_layout)
 
         # lower stylization container
         lower_stylization_buttons_container = QWidget()
@@ -132,6 +138,7 @@ class StyleTransferMenu(QWidget):
         lower_stylization_container_layout = QHBoxLayout()
         lower_stylization_container_layout.addWidget(lower_stylization_buttons_container)
         lower_stylization_container_layout.addWidget(lower_stylization_image_container)
+        lower_stylization_container.setLayout(lower_stylization_container_layout)
 
         # upper stylization buttons container
         upper_stylization_buttons_open_file_button = QPushButton("Open File")
@@ -167,6 +174,12 @@ class StyleTransferMenu(QWidget):
 
         # result_image_container
         result_image_container.setMinimumSize(400, 400)
+        result_image_container_layout = QVBoxLayout()
+        result_image = QLabel()
+        result_image.setPixmap(QPixmap('assets/style-transfer-example.png'))
+        result_image_container_layout.addWidget(result_image)
+        result_image_container.setLayout(result_image_container_layout)
+
 
         # result_controls_container
 
