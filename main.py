@@ -137,6 +137,7 @@ class StyleTransferMenu(QWidget):
         upper_stylization_container_layout = QHBoxLayout()
         upper_stylization_container_layout.addWidget(upper_stylization_buttons_container)
         upper_stylization_container_layout.addWidget(upper_stylization_image_container)
+        upper_stylization_container_layout.setStretch(0, 1)
         upper_stylization_container.setLayout(upper_stylization_container_layout)
 
         # lower stylization container
@@ -145,6 +146,7 @@ class StyleTransferMenu(QWidget):
         lower_stylization_container_layout = QHBoxLayout()
         lower_stylization_container_layout.addWidget(lower_stylization_buttons_container)
         lower_stylization_container_layout.addWidget(lower_stylization_image_container)
+        lower_stylization_container_layout.setStretch(0, 1)
         lower_stylization_container.setLayout(lower_stylization_container_layout)
 
         # upper stylization buttons container
@@ -213,10 +215,11 @@ class StyleTransferMenu(QWidget):
 
 
         # result_controls_container
-        result_controls_layout = QHBoxLayout()
+        result_controls_layout = QGridLayout()
         result_save_library_button = MenuButton('Save To Library', 'assets/icons/book.png')
-        result_controls_layout.addStretch()
-        result_controls_layout.addWidget(result_save_library_button)
+        result_controls_layout.addWidget(result_save_library_button, 0, 1)
+        result_controls_layout.setColumnStretch(0, 1)
+        result_controls_layout.setRowStretch(1, 1)
         result_controls_container.setLayout(result_controls_layout)
 
 
