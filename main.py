@@ -2,29 +2,59 @@ import sys
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QAction, QKeySequence, QPixmap, QIcon
+from PyQt6.QtGui import QAction, QIcon, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QApplication, QHBoxLayout, QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QSpacerItem, QGridLayout
+    QStackedLayout
+
+from widgets.generate import GenerateMenu
+from widgets.home import HomeMenu
+from widgets.library import LibraryMenu
+from widgets.morphing import MorphingMenu
+from widgets.settings import SettingsMenu
+from widgets.style import StyleMenu
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self):
         super().__init__()
 
+        # initial configuration
         self.setWindowTitle("neuroART")
         self.resize(1280, 720)
         self.setMinimumSize(QtCore.QSize(960, 560))
-
-        self.main_window_layout = QHBoxLayout()
-
         self.central_widget = QWidget()
-        self.central_widget.setLayout(self.main_window_layout)
         self.setCentralWidget(self.central_widget)
 
+        # initialize menus
+        self.home_menu = HomeMenu()
+        self.style_menu = StyleMenu()
+        self.morphing_menu = MorphingMenu()
+        self.generate_menu = GenerateMenu()
+        self.settings_menu = SettingsMenu()
+        self.library_menu = LibraryMenu()
+
+        # main window layout
+        self.main_window_layout = QHBoxLayout()
+        self.central_widget.setLayout(self.main_window_layout)
+
+        # left menu
         self.main_window_layout.addWidget(LeftMenu())
-        # TODO home menu
-        # self.main_window_layout.addWidget(MainMenu())
-        self.main_window_layout.addWidget(StyleTransferMenu())
+
+        # stacked layout
+        self.stacked_layout = QStackedLayout()
+        self.main_window_layout.addLayout(self.stacked_layout)
+        self.stacked_layout.addWidget(self.style_menu)
+        self.stacked_layout.addWidget(self.home_menu)
+        self.stacked_layout.addWidget(self.generate_menu)
+        self.stacked_layout.addWidget(self.library_menu)
+        self.stacked_layout.addWidget(self.settings_menu)
+        self.stacked_layout.addWidget(self.morphing_menu)
+        self.stacked_layout.setCurrentWidget(self.style_menu)
+
+        self.stacked_layout.setCurrentWidget(self.style_menu)
+
+        # right menu TODO this should be in the style transfer widget
         self.main_window_layout.addWidget(RightMenu())
 
         # -- Menu bar --
@@ -46,7 +76,11 @@ class MainWindow(QMainWindow):
 
         help_menu = menu_bar.addMenu('Help')
 
-        self.central_widget.setStyleSheet('border: 1px solid red') # TODO testing purposes, remove later
+        # self.central_widget.setStyleSheet('border: 1px solid red')  # TODO testing purposes, remove later
+
+    @staticmethod
+    def change_current_widget(widget: QWidget):
+        window.stacked_layout.setCurrentWidget(widget)
 
 
 class LeftMenu(QWidget):
@@ -56,25 +90,19 @@ class LeftMenu(QWidget):
         self.left_menu_layout = QVBoxLayout()
         self.setLayout(self.left_menu_layout)
 
-        self.left_menu_layout.addWidget(MenuButton("Home", "assets/icons/home.png"))
-        self.left_menu_layout.addWidget(MenuButton("Generate", "assets/icons/bulb.png"))
-        self.left_menu_layout.addWidget(MenuButton("Style Transfer", "assets/icons/shuffle.png"))
-        self.left_menu_layout.addWidget(MenuButton("Morphing", "assets/icons/color-filter.png"))
-        self.left_menu_layout.addWidget(MenuButton("Library", "assets/icons/book.png"))
-        self.left_menu_layout.addWidget(MenuButton("Settings", "assets/icons/settings.png"))
+        self.left_menu_layout.addWidget(MenuButton("Home", "assets/icons/home.png", button_name='btn_leftmenu_home'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Generate", "assets/icons/bulb.png", button_name='btn_leftmenu_generate'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Style Transfer", "assets/icons/shuffle.png", button_name='btn_leftmenu_style'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Morphing", "assets/icons/color-filter.png", button_name='btn_leftmenu_morphing'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Library", "assets/icons/book.png", button_name='btn_leftmenu_library'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Settings", "assets/icons/settings.png", button_name='btn_leftmenu_settings'))
 
         self.left_menu_layout.addStretch()
-
-
-class MainMenu(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.main_menu_layout = QVBoxLayout()
-        self.setLayout(self.main_menu_layout)
-
-        self.main_menu_layout.addWidget(QPushButton('test main menu 1'))
-        self.main_menu_layout.addWidget(QPushButton('test main menu 2'))
 
 
 class RightMenu(QWidget):
@@ -92,141 +120,43 @@ class RightMenu(QWidget):
             button.setMaximumSize(200, 200)
             self.right_menu_layout.addWidget(button)
 
-
         self.right_menu_layout.addStretch()
 
 
 class MenuButton(QPushButton):
-    def __init__(self, label, image_path):
+
+    def __init__(self, label, image_path, button_name: str = ''):
         super().__init__()
 
         icon = QIcon(QPixmap(image_path))
         self.setIcon(icon)
         self.setText(label)
-        self.setStyleSheet('text-align: left')
+        self.setStyleSheet('text-align: left; padding: 5px')
+        self.setObjectName(button_name)
+        self.clicked.connect(self.button_click)
 
+    def button_click(self):
+        button = self.sender()
+        button_name = button.objectName()
 
-class StyleTransferMenu(QWidget):
-    def __init__(self):
-        super().__init__()
+        if button_name == 'btn_leftmenu_home':
+            print('menu button clicked')
+            window.change_current_widget(window.home_menu)
 
-        layout = QHBoxLayout()
-        self.setLayout(layout)
+        if button_name == 'btn_leftmenu_style':
+            print('style button clicked')
+            window.change_current_widget(window.style_menu)
 
-        left_container = QWidget()
-        right_container = QWidget()
-        left_container.setStyleSheet('border: 1px solid blue')
-        right_container.setStyleSheet('border: 1px solid green')
-        layout.addWidget(left_container)
-        layout.addWidget(right_container)
-        layout.setStretch(0, 2)
-        layout.setStretch(1, 2)
+        if button_name == 'btn_leftmenu_generate':
+            print('generate button clicked')
+            window.change_current_widget(window.generate_menu)
 
-        # left container
-        upper_stylization_container = QWidget()
-        lower_stylization_container = QWidget()
-        left_container_layout = QVBoxLayout()
-        left_container_layout.addWidget(upper_stylization_container)
-        left_container_layout.addStretch()
-        left_container_layout.addWidget(lower_stylization_container)
-        left_container.setLayout(left_container_layout)
-
-        # upper stylization container
-        upper_stylization_buttons_container = QWidget()
-        upper_stylization_image_container = QWidget()
-        upper_stylization_container_layout = QHBoxLayout()
-        upper_stylization_container_layout.addWidget(upper_stylization_buttons_container)
-        upper_stylization_container_layout.addWidget(upper_stylization_image_container)
-        upper_stylization_container_layout.setStretch(0, 1)
-        upper_stylization_container.setLayout(upper_stylization_container_layout)
-
-        # lower stylization container
-        lower_stylization_buttons_container = QWidget()
-        lower_stylization_image_container = QWidget()
-        lower_stylization_container_layout = QHBoxLayout()
-        lower_stylization_container_layout.addWidget(lower_stylization_buttons_container)
-        lower_stylization_container_layout.addWidget(lower_stylization_image_container)
-        lower_stylization_container_layout.setStretch(0, 1)
-        lower_stylization_container.setLayout(lower_stylization_container_layout)
-
-        # upper stylization buttons container
-        upper_stylization_buttons_open_file_button = MenuButton('Open File', 'assets/icons/document.png')
-        upper_stylization_buttons_select_button = MenuButton("Select From Library", 'assets/icons/bookmark.png')
-        upper_stylization_buttons_wikiart_button = MenuButton("Random WikiArt Image", 'assets/icons/shuffle.png')
-        upper_stylization_buttons_layout = QVBoxLayout()
-        upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_open_file_button)
-        upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_select_button)
-        upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_wikiart_button)
-        upper_stylization_buttons_layout.addStretch()
-        upper_stylization_buttons_container.setLayout(upper_stylization_buttons_layout)
-
-        # upper stylization image container
-        upper_stylization_image = QLabel()
-        upper_stylization_image.setPixmap(QPixmap('assets/examples/golden-gate-example.jpg'))
-        upper_stylization_container_layout.addWidget(upper_stylization_image)
-
-        # lower stylization buttons container
-        lower_stylization_buttons_open_file_button = MenuButton('Open File', 'assets/icons/document.png')
-        lower_stylization_buttons_select_button = MenuButton("Select From Library", 'assets/icons/bookmark.png')
-        lower_stylization_buttons_wikiart_button = MenuButton("Random WikiArt Image", 'assets/icons/shuffle.png')
-        lower_stylization_buttons_layout = QVBoxLayout()
-        lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_open_file_button)
-        lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_select_button)
-        lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_wikiart_button)
-        lower_stylization_buttons_layout.addStretch()
-        lower_stylization_buttons_container.setLayout(lower_stylization_buttons_layout)
-
-        # lower stylization image container
-        lower_stylization_image = QLabel()
-        lower_stylization_image.setPixmap(QPixmap('assets/examples/towers-example.jpg'))
-        lower_stylization_container_layout.addWidget(lower_stylization_image)
-
-
-        # right container
-        right_container_layout = QVBoxLayout()
-        right_container.setLayout(right_container_layout)
-        stylization_controls_container = QWidget()
-        result_image_container = QWidget()
-        result_controls_container = QWidget()
-        right_container_layout.addWidget(stylization_controls_container)
-        right_container_layout.addWidget(result_image_container)
-        right_container_layout.addWidget(result_controls_container)
-        right_container_layout.setStretch(0, 1)
-        right_container_layout.setStretch(2, 1)
-
-        # stylization_controls_container
-        stylization_controls_container_layout = QVBoxLayout()
-        stylization_controls_container.setLayout(stylization_controls_container_layout)
-
-        stylization_controls_container_layout.addWidget(QLabel('tmp-stylization-strength'))
-
-        stylize_button = QPushButton('Stylize')
-        icon = QIcon(QPixmap('assets/icons/shuffle.png'))
-        stylize_button.setIcon(icon)
-        stylization_controls_container_layout.addWidget(stylize_button)
-
-        # result_image_container
-        result_image_container.setMinimumSize(400, 400)
-        result_image_container_layout = QVBoxLayout()
-        result_image = QLabel()
-        result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
-        result_image_container_layout.addWidget(result_image)
-        result_image_container.setLayout(result_image_container_layout)
-
-
-        # result_controls_container
-        result_controls_layout = QGridLayout()
-        result_save_library_button = MenuButton('Save To Library', 'assets/icons/book.png')
-        result_controls_layout.addWidget(result_save_library_button, 0, 1)
-        result_controls_layout.setColumnStretch(0, 1)
-        result_controls_layout.setRowStretch(1, 1)
-        result_controls_container.setLayout(result_controls_layout)
-
-
+        if button_name == 'btn_leftmenu_library':
+            print('library button clicked')
+            window.change_current_widget(window.library_menu)
 
 
 app = QApplication(sys.argv)
-
 window = MainWindow()
 window.show()
 app.exec()
