@@ -1,5 +1,6 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider
 
 
 class StyleMenu(QWidget):
@@ -93,7 +94,16 @@ class StyleMenu(QWidget):
         stylization_controls_container_layout = QVBoxLayout()
         stylization_controls_container.setLayout(stylization_controls_container_layout)
 
-        stylization_controls_container_layout.addWidget(QLabel('tmp-stylization-strength'))
+        self.stylization_slider = QSlider()
+        self.stylization_slider.setOrientation(Qt.Orientation.Horizontal)
+        self.stylization_slider.setTickPosition(QSlider.TickPosition.TicksAbove)
+        self.stylization_slider.setValue(60)
+        self.stylization_slider.setMinimum(0)
+        self.stylization_slider.setMaximum(100)
+        self.stylization_slider.setSingleStep(1)
+        stylization_controls_container_layout.addWidget(self.stylization_slider)
+
+        self.stylization_slider.valueChanged.connect(self.slider_demo)
 
         stylize_button = QPushButton('Stylize')
         icon = QIcon(QPixmap('assets/icons/shuffle.png'))
@@ -116,6 +126,9 @@ class StyleMenu(QWidget):
         result_controls_layout.setRowStretch(1, 1)
         result_controls_container.setLayout(result_controls_layout)
 
+    def slider_demo(self):
+        print(self.stylization_slider.value())
+
 
 class StyleButton(QPushButton):
 
@@ -132,4 +145,3 @@ class StyleButton(QPushButton):
     def button_click(self):
         button = self.sender()
         button_name = button.objectName()
-
