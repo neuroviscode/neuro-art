@@ -1,6 +1,11 @@
+import tensorflow as tf
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider
+
+from logic.preprocessing import preprocess_image, load_img
+from logic.style_transfer import StyleTransfer
 
 
 class StyleMenu(QWidget):
@@ -108,14 +113,15 @@ class StyleMenu(QWidget):
         stylize_button = QPushButton('Stylize')
         icon = QIcon(QPixmap('assets/icons/shuffle.png'))
         stylize_button.setIcon(icon)
+        stylize_button.clicked.connect(self.stylize_button_click)
         stylization_controls_container_layout.addWidget(stylize_button)
 
         # result_image_container
         result_image_container.setMinimumSize(400, 400)
         result_image_container_layout = QVBoxLayout()
-        result_image = QLabel()
-        result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
-        result_image_container_layout.addWidget(result_image)
+        self.result_image = QLabel()
+        self.result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
+        result_image_container_layout.addWidget(self.result_image)
         result_image_container.setLayout(result_image_container_layout)
 
         # result_controls_container
@@ -128,6 +134,28 @@ class StyleMenu(QWidget):
 
     def slider_demo(self):
         print(self.stylization_slider.value())
+
+    def stylize_button_click(self):
+        # TODO get these paths from selected images
+        content_image_path = "assets/examples/golden-gate-example.jpg"
+        style_image_path = "assets/examples/towers-example.jpg"
+        content_image = preprocess_image(load_img(content_image_path), 384)
+        style_image = preprocess_image(load_img(style_image_path), 256)
+
+        content_blending_ratio = self.stylization_slider.value() / 100  # define content blending ratio between [0..1].
+
+        # Calculate style bottleneck for the preprocessed style image.
+        style_bottleneck = StyleTransfer.run_style_predict(style_image)
+        style_bottleneck_content = StyleTransfer.run_style_predict(preprocess_image(content_image, 256))
+        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (1 - content_blending_ratio) * style_bottleneck
+
+        # Stylize the content image using the style bottleneck.
+        result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
+        from PIL import Image
+        # TODO increment counter in this path
+        result_path = "assets/examples/result0.png"
+        tf.keras.utils.save_img(result_path, result_image)
+        self.result_image.setPixmap(QPixmap(result_path))
 
 
 class StyleButton(QPushButton):
