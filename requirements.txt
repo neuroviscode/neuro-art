@@ -2,3 +2,4 @@ PyQt6~=6.5.1
 opencv-python~=4.7.0.72
 tensorflow~=2.12.0
 pillow~=9.5.0
+google-cloud~=0.34.0
