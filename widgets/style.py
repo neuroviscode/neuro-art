@@ -138,14 +138,14 @@ class StyleMenu(QWidget):
 
         # result_image_container
         result_image_container_layout = QVBoxLayout()
-        result_image = QLabel()
+        self.result_image = QLabel()
         # result_image.setBaseSize(500, 500)
         # image = cv.imread('assets/examples/style-transfer-result-example.png')
         # image.resize(500, 500)
         # result_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
         #                                                 QImage.Format.Format_BGR888)))
-        result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
-        result_image_container_layout.addWidget(result_image)
+        self.result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
+        result_image_container_layout.addWidget(self.result_image)
         result_image_container.setLayout(result_image_container_layout)
 
         # result_controls_container
