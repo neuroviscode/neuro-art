@@ -1,10 +1,6 @@
-import sys
-
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QAction, QIcon, QPixmap
-from PyQt6.QtWidgets import QMainWindow, QApplication, QHBoxLayout, QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QStackedLayout
+from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QPushButton, QStackedLayout
 
 from widgets.generate import GenerateMenu
 from widgets.home import HomeMenu
@@ -21,8 +17,8 @@ class MainWindow(QMainWindow):
 
         # initial configuration
         self.setWindowTitle("neuroART")
-        self.resize(1280, 720)
-        self.setMinimumSize(QtCore.QSize(960, 560))
+        self.resize(1400, 720)
+        self.setMinimumSize(QtCore.QSize(1360, 720))
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -54,33 +50,10 @@ class MainWindow(QMainWindow):
 
         self.stacked_layout.setCurrentWidget(self.style_menu)
 
-        # right menu TODO this should be in the style transfer widget
-        self.main_window_layout.addWidget(RightMenu())
-
-        # -- Menu bar --
-        menu_bar = self.menuBar()
-        menu_bar.setCornerWidget(QLabel('NeuroART'), Qt.Corner.TopLeftCorner)
-        menu_bar.setMinimumSize(400, 30)
-
-        file_menu = menu_bar.addMenu('File')
-        open_action = QAction('Open', self)
-        close_action = QAction('Exit', self)
-        file_menu.addAction(open_action)
-        file_menu.addAction(close_action)
-
-        edit_menu = menu_bar.addMenu('Edit')
-        undo_action = QAction('Undo', self)
-        redo_action = QAction('Redo', self)
-        edit_menu.addAction(undo_action)
-        edit_menu.addAction(redo_action)
-
-        help_menu = menu_bar.addMenu('Help')
-
         # self.central_widget.setStyleSheet('border: 1px solid red')  # TODO testing purposes, remove later
 
-    @staticmethod
-    def change_current_widget(widget: QWidget):
-        window.stacked_layout.setCurrentWidget(widget)
+    def change_current_widget(self, widget: QWidget):
+        self.stacked_layout.setCurrentWidget(widget)
 
 
 class LeftMenu(QWidget):
@@ -105,24 +78,6 @@ class LeftMenu(QWidget):
         self.left_menu_layout.addStretch()
 
 
-class RightMenu(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.right_menu_layout = QVBoxLayout()
-        self.setLayout(self.right_menu_layout)
-
-        self.right_menu_layout.addWidget(QLabel('Recent artworks'))
-        for i in range(5):
-            button = QPushButton()
-            button.setIcon(QIcon(f'assets/examples/recent-example-{i + 1}.png'))
-            button.setIconSize(QSize(120, 120))
-            button.setMaximumSize(200, 200)
-            self.right_menu_layout.addWidget(button)
-
-        self.right_menu_layout.addStretch()
-
-
 class MenuButton(QPushButton):
 
     def __init__(self, label, image_path, button_name: str = ''):
@@ -131,7 +86,7 @@ class MenuButton(QPushButton):
         icon = QIcon(QPixmap(image_path))
         self.setIcon(icon)
         self.setText(label)
-        self.setStyleSheet('text-align: left; padding: 5px')
+        self.setStyleSheet('text-align: left; padding: 5px 12px;')
         self.setObjectName(button_name)
         self.clicked.connect(self.button_click)
 
@@ -139,24 +94,21 @@ class MenuButton(QPushButton):
         button = self.sender()
         button_name = button.objectName()
 
+        window = MainWindow.window(self)
         if button_name == 'btn_leftmenu_home':
-            print('menu button clicked')
             window.change_current_widget(window.home_menu)
 
         if button_name == 'btn_leftmenu_style':
-            print('style button clicked')
             window.change_current_widget(window.style_menu)
 
         if button_name == 'btn_leftmenu_generate':
-            print('generate button clicked')
             window.change_current_widget(window.generate_menu)
 
+        if button_name == 'btn_leftmenu_morphing':
+            window.change_current_widget(window.morphing_menu)
+
         if button_name == 'btn_leftmenu_library':
-            print('library button clicked')
             window.change_current_widget(window.library_menu)
 
-
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-app.exec()
+        if button_name == 'btn_leftmenu_settings':
+            window.change_current_widget(window.settings_menu)
