@@ -1,3 +1,4 @@
 .idea/
 __pycache__/
 assets/examples/result*
+release/
