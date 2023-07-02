@@ -1,3 +1,5 @@
+import os
+
 import cv2 as cv
 import tensorflow as tf
 from PyQt6.QtCore import Qt, QSize
@@ -9,8 +11,13 @@ from logic.style_transfer import StyleTransfer
 
 
 class StyleMenu(QWidget):
+    num_of_results = 0
+
     def __init__(self):
+
         super().__init__()
+
+        StyleMenu.search_for_results()
 
         layout = QHBoxLayout()
         self.setLayout(layout)
@@ -24,7 +31,8 @@ class StyleMenu(QWidget):
         layout.setStretch(0, 2)
         layout.setStretch(1, 2)
 
-        layout.addWidget(RightMenu())
+        self.right_menu = RightMenu()
+        layout.addWidget(self.right_menu)
 
         # left container
         upper_stylization_container = QWidget()
@@ -144,7 +152,8 @@ class StyleMenu(QWidget):
         # image.resize(500, 500)
         # result_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
         #                                                 QImage.Format.Format_BGR888)))
-        self.result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
+        self.result_image_path = 'assets/examples/style-transfer-result-example.png'
+        self.result_image.setPixmap(QPixmap(self.result_image_path))
         result_image_container_layout.addWidget(self.result_image)
         result_image_container.setLayout(result_image_container_layout)
 
@@ -162,20 +171,42 @@ class StyleMenu(QWidget):
         content_image = preprocess_image(load_img(content_image_path), 384)
         style_image = preprocess_image(load_img(style_image_path), 256)
 
-        content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
+        content_blending_ratio = (
+                                         100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
 
         # Calculate style bottleneck for the preprocessed style image.
         style_bottleneck = StyleTransfer.run_style_predict(style_image)
         style_bottleneck_content = StyleTransfer.run_style_predict(preprocess_image(content_image, 256))
-        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (1 - content_blending_ratio) * style_bottleneck
+        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (
+                1 - content_blending_ratio) * style_bottleneck
 
         # Stylize the content image using the style bottleneck.
         result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
+
         from PIL import Image
-        # TODO increment counter in this path
-        result_path = "assets/examples/result0.png"
-        tf.keras.utils.save_img(result_path, result_image)
-        self.result_image.setPixmap(QPixmap(result_path))
+        self.result_image_path = f"assets/results/result-{StyleMenu.num_of_results}.png"
+        tf.keras.utils.save_img(self.result_image_path, result_image)
+        pixmap = QPixmap(self.result_image_path)
+        scaled_pixmap = pixmap.scaled(self.result_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.result_image.setPixmap(scaled_pixmap)
+
+        StyleMenu.num_of_results += 1
+        self.right_menu.add_recent_artwork(self.result_image_path)
+
+    @staticmethod
+    def search_for_results():
+        file_names = []
+
+        with os.scandir('assets/results') as entries:
+            for entry in entries:
+                if entry.is_file():
+                    if entry.name.endswith('.png'):
+                        file_names.append(entry.name)
+
+        file_names = sorted(file_names)
+        last_result = file_names[-1]
+        StyleMenu.num_of_results = int(last_result[-5:-4]) + 1
 
 
 class RightMenu(QWidget):
@@ -184,16 +215,51 @@ class RightMenu(QWidget):
 
         self.right_menu_layout = QVBoxLayout()
         self.setLayout(self.right_menu_layout)
+        self.artworks_paths = []
 
         self.right_menu_layout.addWidget(QLabel('Recent artworks'))
-        for i in range(5):
-            button = QPushButton()
-            button.setIcon(QIcon(f'assets/examples/recent-example-{i + 1}.png'))
-            button.setIconSize(QSize(120, 120))
-            button.setMaximumSize(200, 200)
-            self.right_menu_layout.addWidget(button)
+
+        for i in range(StyleMenu.num_of_results, 0, -1):
+            if i < 0:
+                break
+
+            image = QLabel()
+            image.setObjectName('right-menu-artwork')
+            image.setFixedSize(120, 120)
+            self.artworks_paths.append(f'assets/results/result-{i - 1}.png')
+
+            pixmap = QPixmap(f'assets/results/result-{i - 1}.png')
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            image.setPixmap(QPixmap(scaled_pixmap))
+
+            self.right_menu_layout.addWidget(image)
+
+        for i in range(5 - StyleMenu.num_of_results):
+            image = QLabel()
+            image.setObjectName('right-menu-artwork')
+            image.setFixedSize(120, 120)
+            self.artworks_paths.append(f'assets/examples/recent-example-{i + 1}.png')
+            pixmap = QPixmap(f'assets/examples/recent-example-{i + 1}.png')
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            image.setPixmap(QPixmap(scaled_pixmap))
+
+            self.right_menu_layout.addWidget(image)
 
         self.right_menu_layout.addStretch()
+
+    def add_recent_artwork(self, artwork_path):
+
+        self.artworks_paths.insert(0, artwork_path)
+        self.artworks_paths = self.artworks_paths[:-1]
+
+        images = self.findChildren(QLabel, 'right-menu-artwork')
+        for i in range(5):
+            pixmap = QPixmap(self.artworks_paths[i])
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            images[i].setPixmap(QPixmap(scaled_pixmap))
 
 
 class StyleButton(QPushButton):
