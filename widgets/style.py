@@ -204,6 +204,10 @@ class StyleMenu(QWidget):
                     if entry.name.endswith('.png'):
                         file_names.append(entry.name)
 
+        if len(file_names) <= 0:
+            StyleMenu.num_of_results = 0
+            return
+
         file_names = sorted(file_names)
         last_result = file_names[-1]
         StyleMenu.num_of_results = int(last_result[-5:-4]) + 1
