@@ -29,7 +29,7 @@ class LeftContainer(QWidget):
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.setStyleSheet('border: 1px solid red')
+        # self.setStyleSheet('border: 1px solid red')
 
         # image
         self.image_container = QWidget()
@@ -67,7 +67,7 @@ class MiddleContainer(QWidget):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setStyleSheet('border: 1px solid lime')
+        # self.setStyleSheet('border: 1px solid lime')
 
         # image
         self.image_container = QWidget()
@@ -115,7 +115,7 @@ class RightContainer(QWidget):
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.setStyleSheet('border: 1px solid blue')
+        # self.setStyleSheet('border: 1px solid blue')
 
         # image
         self.image_container = QWidget()
