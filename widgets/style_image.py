@@ -8,7 +8,7 @@ from logic.preprocessing import preprocess_image, load_img
 from logic.style_transfer import StyleTransfer
 
 
-class StyleMenu(QWidget):
+class StyleImageMenu(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -217,7 +217,7 @@ class StyleButton(QPushButton):
             if file:
                 from main import MainWindow
                 window = MainWindow.window(self)
-                style_menu: StyleMenu = window.style_menu
+                style_menu: StyleImageMenu = window.style_image_menu
                 image = style_menu.findChild(QLabel, label_name)
                 if file[0] == '':
                     return
