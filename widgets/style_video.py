@@ -68,12 +68,11 @@ class StyleVideoMenu(QWidget):
         self.upper_stylization_media_player = QMediaPlayer()
         self.upper_stylization_video_path = "assets/examples/horse.mp4"
         self.upper_stylization_media_player.setSource(QUrl(self.upper_stylization_video_path))
-        upper_stylization_video = QVideoWidget()
-        self.upper_stylization_media_player.setVideoOutput(upper_stylization_video)
-        upper_stylization_video.setObjectName('upper_stylization_video')
-        upper_stylization_video.show()
+        self.upper_stylization_video = QVideoWidget()
+        self.upper_stylization_media_player.setVideoOutput(self.upper_stylization_video)
+        self.upper_stylization_video.setObjectName('upper_stylization_video')
         self.upper_stylization_media_player.play()
-        upper_stylization_video_container_layout.addWidget(upper_stylization_video)
+        upper_stylization_video_container_layout.addWidget(self.upper_stylization_video)
         upper_stylization_video_container.setLayout(upper_stylization_video_container_layout)
 
 
@@ -142,7 +141,6 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.positionChanged.connect(self.video_position_changed)
         self.result_media_player.durationChanged.connect(self.video_duration_changed)
         result_video.setObjectName('result_video')
-        result_video.show()
         self.result_media_player.play()
         self.video_position_slider = QSlider(Qt.Orientation.Horizontal)
         self.video_position_slider.setRange(0, self.upper_stylization_media_player.duration())
@@ -221,12 +219,36 @@ class StyleButton(QPushButton):
         button_name = button.objectName()
 
         def open_video_from_file():
-            # TODO
-            print("OPEN VIDEO!")
+            file = QFileDialog.getOpenFileName(self, 'Select a video', '.', 'Videos (*.mp4)')
+            if file:
+                from main import MainWindow
+                window = MainWindow.window(self)
+                style_menu: StyleVideoMenu = window.style_video_menu
+                if file[0] == '':
+                    return
+                style_menu.result_media_player.pause()
+                style_menu.upper_stylization_media_player.pause()
+
+                style_menu.upper_stylization_video_path = file[0]
+                style_menu.upper_stylization_media_player.setSource(QUrl(style_menu.upper_stylization_video_path))
+                style_menu.upper_stylization_media_player.setVideoOutput(style_menu.upper_stylization_video)
+                style_menu.upper_stylization_media_player.play()
 
         def open_image_from_file():
-            # TODO
-            print("OPEN IMAGE!")
+            file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
+            if file:
+                from main import MainWindow
+                window = MainWindow.window(self)
+                style_menu: StyleVideoMenu = window.style_video_menu
+                image = style_menu.findChild(QLabel, 'lower_stylization_image')
+                if file[0] == '':
+                    return
+                pixmap = QPixmap(file[0])
+                style_menu.lower_stylization_image_path = file[0]
+
+                scaled_pixmap = pixmap.scaled(image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                              Qt.TransformationMode.SmoothTransformation)
+                image.setPixmap(scaled_pixmap)
 
         if button_name == 'upper_open_button':
             open_video_from_file()
