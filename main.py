@@ -8,6 +8,7 @@ from widgets.library import LibraryMenu
 from widgets.morphing import MorphingMenu
 from widgets.settings import SettingsMenu
 from widgets.style_image import StyleImageMenu
+from widgets.style_video import StyleVideoMenu
 
 
 class MainWindow(QMainWindow):
@@ -25,6 +26,7 @@ class MainWindow(QMainWindow):
         # initialize menus
         self.home_menu = HomeMenu()
         self.style_image_menu = StyleImageMenu()
+        self.style_video_menu = StyleVideoMenu()
         self.morphing_menu = MorphingMenu()
         self.generate_menu = GenerateMenu()
         self.settings_menu = SettingsMenu()
@@ -41,12 +43,12 @@ class MainWindow(QMainWindow):
         self.stacked_layout = QStackedLayout()
         self.main_window_layout.addLayout(self.stacked_layout)
         self.stacked_layout.addWidget(self.style_image_menu)
+        self.stacked_layout.addWidget(self.style_video_menu)
         self.stacked_layout.addWidget(self.home_menu)
         self.stacked_layout.addWidget(self.generate_menu)
         self.stacked_layout.addWidget(self.library_menu)
         self.stacked_layout.addWidget(self.settings_menu)
         self.stacked_layout.addWidget(self.morphing_menu)
-        self.stacked_layout.setCurrentWidget(self.style_image_menu)
 
         self.stacked_layout.setCurrentWidget(self.style_image_menu)
 
@@ -68,6 +70,8 @@ class LeftMenu(QWidget):
             MenuButton("Generate", "assets/icons/bulb.png", button_name='btn_leftmenu_generate'))
         self.left_menu_layout.addWidget(
             MenuButton("Style Image", "assets/icons/shuffle.png", button_name='btn_leftmenu_style_image'))
+        self.left_menu_layout.addWidget(
+            MenuButton("Style Video", "assets/icons/shuffle.png", button_name='btn_leftmenu_style_video'))
         self.left_menu_layout.addWidget(
             MenuButton("Morphing", "assets/icons/color-filter.png", button_name='btn_leftmenu_morphing'))
         self.left_menu_layout.addWidget(
@@ -100,6 +104,9 @@ class MenuButton(QPushButton):
 
         if button_name == 'btn_leftmenu_style_image':
             window.change_current_widget(window.style_image_menu)
+
+        if button_name == 'btn_leftmenu_style_video':
+            window.change_current_widget(window.style_video_menu)
 
         if button_name == 'btn_leftmenu_generate':
             window.change_current_widget(window.generate_menu)
