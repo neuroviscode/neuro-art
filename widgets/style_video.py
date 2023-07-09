@@ -7,6 +7,9 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
     QStyle
 
+from logic.preprocessing import preprocess_image, load_img
+from logic.style_transfer import StyleTransfer
+
 
 class StyleVideoMenu(QWidget):
     def __init__(self):
@@ -72,6 +75,8 @@ class StyleVideoMenu(QWidget):
         self.upper_stylization_media_player.setVideoOutput(self.upper_stylization_video)
         self.upper_stylization_video.setObjectName('upper_stylization_video')
         self.upper_stylization_media_player.play()
+        self.upper_stylization_media_player.pause()
+        self.upper_stylization_media_player.setPosition(0)
         upper_stylization_video_container_layout.addWidget(self.upper_stylization_video)
         upper_stylization_video_container.setLayout(upper_stylization_video_container_layout)
 
@@ -136,19 +141,20 @@ class StyleVideoMenu(QWidget):
         self.result_media_player = QMediaPlayer()
         self.result_video_path = "assets/examples/horse.mp4"
         self.result_media_player.setSource(QUrl(self.result_video_path))
-        result_video = QVideoWidget()
-        self.result_media_player.setVideoOutput(result_video)
+        self.result_video = QVideoWidget()
+        self.result_media_player.setVideoOutput(self.result_video)
         self.result_media_player.positionChanged.connect(self.video_position_changed)
         self.result_media_player.durationChanged.connect(self.video_duration_changed)
-        result_video.setObjectName('result_video')
-        self.result_media_player.play()
+        self.result_media_player.play() # without playing and pausing the video were not visible
+        self.result_media_player.pause()
+        self.result_media_player.setPosition(0)
         self.video_position_slider = QSlider(Qt.Orientation.Horizontal)
         self.video_position_slider.setRange(0, self.upper_stylization_media_player.duration())
         self.video_position_slider.sliderMoved.connect(self.set_video_position)
         play_button = QPushButton()
         play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         play_button.clicked.connect(self.play_button_click)
-        result_video_container_layout.addWidget(result_video)
+        result_video_container_layout.addWidget(self.result_video)
         result_video_container_layout.addWidget(self.video_position_slider)
         result_video_container_layout.addWidget(play_button)
         result_video_container.setLayout(result_video_container_layout)
@@ -162,8 +168,49 @@ class StyleVideoMenu(QWidget):
         result_controls_container.setLayout(result_controls_layout)
 
     def stylize_button_click(self):
-        # TODO
-        print("STYLIZE!")
+        # TODO eliminate saving files of every frame, process everything in RAM
+        self.result_media_player.pause()
+        self.upper_stylization_media_player.pause()
+        style_image_path = self.lower_stylization_image_path
+        style_image = preprocess_image(load_img(style_image_path), 256)
+
+        content_video_path = self.upper_stylization_video_path
+        video_capture_object = cv.VideoCapture(content_video_path)
+        content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
+        count = 0
+
+        while True:
+            success, image = video_capture_object.read()
+            if not success:
+                break
+
+            # Saves the frames with frame-count
+            cv.imwrite(f"assets/results/frame{count}.jpg", image)
+            count += 1
+
+        for i in range(count):
+            content_image_frame = preprocess_image(load_img(f"assets/results/frame{i}.jpg"), 384)
+            result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
+            from PIL import Image
+            result_path = f"assets/results/processed_frame{i}.jpg"
+            tf.keras.utils.save_img(result_path, result_image_frame)
+
+        frame_size = (384, 384)
+        frame_rate = 25
+
+        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
+
+        for i in range(count):
+            img = cv.imread(f"assets/results/processed_frame{i}.jpg")
+            out.write(img)
+
+        out.release()
+
+        self.result_video_path = "assets/results/result_video.avi"
+        self.result_media_player.setSource(QUrl(self.result_video_path))
+        self.result_media_player.setVideoOutput(self.result_video)
+        self.result_media_player.play()
+        self.upper_stylization_media_player.play()
 
     def play_button_click(self):
         if self.result_media_player.isPlaying():

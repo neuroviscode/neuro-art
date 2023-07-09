@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from logic.preprocessing import preprocess_image
+
 
 class StyleTransfer:
     # Function to run style prediction on preprocessed style image.
@@ -45,3 +47,16 @@ class StyleTransfer:
         )()
 
         return stylized_image
+
+    @staticmethod
+    def stylize_image(content_image, style_image, content_blending_ratio):
+        # Calculate style bottleneck for the preprocessed style image.
+        style_bottleneck = StyleTransfer.run_style_predict(style_image)
+        style_bottleneck_content = StyleTransfer.run_style_predict(preprocess_image(content_image, 256))
+        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (
+                1 - content_blending_ratio) * style_bottleneck
+
+        # Stylize the content image using the style bottleneck.
+        result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
+
+        return result_image
