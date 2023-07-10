@@ -168,7 +168,6 @@ class StyleVideoMenu(QWidget):
         result_controls_container.setLayout(result_controls_layout)
 
     def stylize_button_click(self):
-        # TODO eliminate saving files of every frame, process everything in RAM
         self.result_media_player.pause()
         self.upper_stylization_media_player.pause()
         style_image_path = self.lower_stylization_image_path
@@ -179,30 +178,31 @@ class StyleVideoMenu(QWidget):
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
         count = 0
 
+        frame_size = (384, 384)
+        frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
+        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
+
         while True:
             success, image = video_capture_object.read()
             if not success:
                 break
 
-            # Saves the frames with frame-count
-            cv.imwrite(f"assets/results/frame{count}.jpg", image)
-            count += 1
+            image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+            image = tf.convert_to_tensor(image, dtype=tf.uint8)
+            image = tf.image.convert_image_dtype(image, tf.float32)
+            image = image[tf.newaxis, :]
+            content_image_frame = preprocess_image(image, 384)
 
-        for i in range(count):
-            content_image_frame = preprocess_image(load_img(f"assets/results/frame{i}.jpg"), 384)
+            # TODO do this conversion without saving tmp file
             result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
             from PIL import Image
-            result_path = f"assets/results/processed_frame{i}.jpg"
+            result_path = "assets/results/tmp_result_frame.jpg"
             tf.keras.utils.save_img(result_path, result_image_frame)
+            result_frame_to_save = cv.imread("assets/results/tmp_result_frame.jpg")
+            out.write(result_frame_to_save)
 
-        frame_size = (384, 384)
-        frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
-
-        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
-
-        for i in range(count):
-            img = cv.imread(f"assets/results/processed_frame{i}.jpg")
-            out.write(img)
+            count += 1
+            print(count)
 
         out.release()
 
