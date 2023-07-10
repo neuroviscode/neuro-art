@@ -196,7 +196,7 @@ class StyleVideoMenu(QWidget):
             tf.keras.utils.save_img(result_path, result_image_frame)
 
         frame_size = (384, 384)
-        frame_rate = 25
+        frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
 
         out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
 
