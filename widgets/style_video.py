@@ -1,5 +1,3 @@
-import cv2 as cv
-import tensorflow as tf
 from PyQt6.QtCore import Qt, QSize, QUrl
 from PyQt6.QtGui import QPixmap, QIcon, QImage
 from PyQt6.QtMultimedia import QMediaPlayer
@@ -7,7 +5,6 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
     QStyle
 
-from logic.preprocessing import preprocess_image, load_img
 from logic.style_transfer import StyleTransfer
 
 
@@ -171,42 +168,11 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.pause()
         self.upper_stylization_media_player.pause()
         style_image_path = self.lower_stylization_image_path
-        style_image = preprocess_image(load_img(style_image_path), 256)
-
         content_video_path = self.upper_stylization_video_path
-        video_capture_object = cv.VideoCapture(content_video_path)
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
-        count = 0
 
-        frame_size = (384, 384)
-        frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
-        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
+        self.result_video_path = StyleTransfer.stylize_video(content_video_path, style_image_path, content_blending_ratio)
 
-        while True:
-            success, image = video_capture_object.read()
-            if not success:
-                break
-
-            image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-            image = tf.convert_to_tensor(image, dtype=tf.uint8)
-            image = tf.image.convert_image_dtype(image, tf.float32)
-            image = image[tf.newaxis, :]
-            content_image_frame = preprocess_image(image, 384)
-
-            # TODO do this conversion without saving tmp file
-            result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
-            from PIL import Image
-            result_path = "assets/results/tmp_result_frame.jpg"
-            tf.keras.utils.save_img(result_path, result_image_frame)
-            result_frame_to_save = cv.imread("assets/results/tmp_result_frame.jpg")
-            out.write(result_frame_to_save)
-
-            count += 1
-            print(count)
-
-        out.release()
-
-        self.result_video_path = "assets/results/result_video.avi"
         self.result_media_player.setSource(QUrl(self.result_video_path))
         self.result_media_player.setVideoOutput(self.result_video)
         self.result_media_player.play()

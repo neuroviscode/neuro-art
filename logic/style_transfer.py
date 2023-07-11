@@ -1,6 +1,7 @@
 import tensorflow as tf
+import cv2 as cv
 
-from logic.preprocessing import preprocess_image
+from logic.preprocessing import preprocess_image, load_img
 
 
 class StyleTransfer:
@@ -60,3 +61,39 @@ class StyleTransfer:
         result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
 
         return result_image
+
+    @staticmethod
+    def stylize_video(content_video_path, style_image_path, content_blending_ratio):
+        style_image = preprocess_image(load_img(style_image_path), 256)
+        video_capture_object = cv.VideoCapture(content_video_path)
+
+        frame_size = (384, 384)
+        frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
+        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
+
+        count = 0
+        while True:
+            success, image = video_capture_object.read()
+            if not success:
+                break
+
+            image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+            image = tf.convert_to_tensor(image, dtype=tf.uint8)
+            image = tf.image.convert_image_dtype(image, tf.float32)
+            image = image[tf.newaxis, :]
+            content_image_frame = preprocess_image(image, 384)
+
+            result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
+            result_image_frame = cv.normalize(result_image_frame, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
+            result_image_frame = cv.cvtColor(result_image_frame, cv.COLOR_RGB2BGR)
+            out.write(result_image_frame)
+
+            # print frame counter for debugging purposses
+            count += 1
+            print(count)
+
+        out.release()
+
+        result_video_path = "assets/results/result_video.avi"
+
+        return result_video_path
