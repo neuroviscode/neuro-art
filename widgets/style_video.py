@@ -167,6 +167,10 @@ class StyleVideoMenu(QWidget):
     def stylize_button_click(self):
         self.result_media_player.pause()
         self.upper_stylization_media_player.pause()
+        self.result_media_player.setPosition(0)
+        self.upper_stylization_media_player.setPosition(0)
+        self.video_position_slider.setValue(0)
+
         style_image_path = self.lower_stylization_image_path
         content_video_path = self.upper_stylization_video_path
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
@@ -175,6 +179,7 @@ class StyleVideoMenu(QWidget):
 
         self.result_media_player.setSource(QUrl(self.result_video_path))
         self.result_media_player.setVideoOutput(self.result_video)
+
         self.result_media_player.play()
         self.upper_stylization_media_player.play()
 
