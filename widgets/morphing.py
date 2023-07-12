@@ -1,6 +1,11 @@
+import cv2
+import numpy as np
+from PIL.Image import Image
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider
+
+from logic.morphing import morphing_handler
 
 
 class MorphingMenu(QWidget):
@@ -19,6 +24,8 @@ class MorphingMenu(QWidget):
         self.morphing_layout.addWidget(self.middle_container, 5)
         self.morphing_layout.addWidget(self.right_container, 2)
         self.morphing_layout.addWidget(self.recent_artwork_container)
+
+        self.frames = morphing_handler()
 
 
 class LeftContainer(QWidget):
@@ -89,11 +96,12 @@ class MiddleContainer(QWidget):
         self.slider = QSlider()
         self.slider.setOrientation(Qt.Orientation.Horizontal)
         self.slider.setTickPosition(QSlider.TickPosition.TicksAbove)
-        self.slider.setValue(60)
+        self.slider.setValue(36)
         self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
+        self.slider.setMaximum(49)
         self.slider.setSingleStep(1)
         self.slider.setObjectName('morphing_slider')
+        self.slider.valueChanged.connect(self.handle_slider_value_change)
         self.layout.addWidget(self.slider)
 
         # buttons
@@ -105,6 +113,25 @@ class MiddleContainer(QWidget):
         self.save_button = MorphingButton('Save to library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.save_button)
         self.button_container_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+    def handle_slider_value_change(self):
+        from main import MainWindow
+        window = MainWindow.window(self)
+
+        morphing_menu = window.morphing_menu
+
+        position = self.slider.value()
+
+        morphed_image = morphing_menu.frames[position]
+        morphed_image_path = f'assets/results/morphing_{position}.jpg'
+
+        morphed_image = cv2.cvtColor(morphed_image, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(morphed_image_path, morphed_image)
+
+        pixmap = QPixmap(morphed_image_path)
+        scaled_pixmap = pixmap.scaled(self.image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.image.setPixmap(scaled_pixmap)
 
 
 class RightContainer(QWidget):
