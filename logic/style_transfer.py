@@ -1,17 +1,58 @@
 import tensorflow as tf
 import cv2 as cv
 
+from enum import Enum
+
 from logic.preprocessing import preprocess_image, load_img
 
 
 class StyleTransfer:
+    class StyleTransferMode(Enum):
+        IMAGE = 0,
+        VIDEO = 1
+
+    style_predict_image_model_path = None
+    style_transform_image_model_path = None
+    style_predict_video_model_path = None
+    style_transform_video_model_path = None
+
+    active_style_predict_model_path = None
+    active_style_transform_model_path = None
+
+    @classmethod
+    def set_mode(cls, mode):
+        match mode:
+            case cls.StyleTransferMode.IMAGE:
+                cls.active_style_predict_model_path = cls.style_predict_image_model_path
+                cls.active_style_transform_model_path = cls.style_transform_image_model_path
+            case cls.StyleTransferMode.VIDEO:
+                cls.active_style_predict_model_path = cls.style_predict_video_model_path
+                cls.active_style_transform_model_path = cls.style_transform_video_model_path
+            case _:
+                cls.active_style_predict_model_path = cls.style_predict_video_model_path
+                cls.active_style_transform_model_path = cls.style_transform_video_model_path
+
+    @classmethod
+    def load_models(cls):
+        cls.style_predict_image_model_path = tf.keras.utils.get_file('style_predict.tflite',
+                                                                     'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/prediction/1?lite-format=tflite')
+
+        cls.style_transform_image_model_path = tf.keras.utils.get_file('style_transform.tflite',
+                                                                       'https://tfhub.dev/sayakpaul/lite-model/arbitrary-image-stylization-inceptionv3/int8/transfer/1?lite-format=tflite')
+
+        cls.style_predict_video_model_path = tf.keras.utils.get_file('style_predict.tflite',
+                                                                     'https://tfhub.dev/sayakpaul/lite-model/arbitrary-image-stylization-inceptionv3/int8/predict/1?lite-format=tflite')
+
+        cls.style_transform_video_model_path = tf.keras.utils.get_file('style_transform.tflite',
+                                                                       'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/transfer/1?lite-format=tflite')
+
+        cls.active_style_predict_model_path = cls.style_predict_video_model_path
+        cls.active_style_transform_model_path = cls.style_transform_video_model_path
+
     # Function to run style prediction on preprocessed style image.
-    @staticmethod
-    def run_style_predict(preprocessed_style_image):
-        # Load the model.
-        style_predict_path = tf.keras.utils.get_file('style_predict.tflite',
-                                                     'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/prediction/1?lite-format=tflite')
-        interpreter = tf.lite.Interpreter(model_path=style_predict_path)
+    @classmethod
+    def run_style_predict(cls, preprocessed_style_image):
+        interpreter = tf.lite.Interpreter(model_path=cls.active_style_predict_model_path)
 
         # Set model input.
         interpreter.allocate_tensors()
@@ -26,12 +67,9 @@ class StyleTransfer:
         return style_bottleneck
 
     # Run style transform on preprocessed style image
-    @staticmethod
-    def run_style_transform(style_bottleneck, preprocessed_content_image):
-        # Load the model.
-        style_transform_path = tf.keras.utils.get_file('style_transform.tflite',
-                                                       'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/transfer/1?lite-format=tflite')
-        interpreter = tf.lite.Interpreter(model_path=style_transform_path)
+    @classmethod
+    def run_style_transform(cls, style_bottleneck, preprocessed_content_image):
+        interpreter = tf.lite.Interpreter(model_path=cls.active_style_transform_model_path)
 
         # Set model input.
         input_details = interpreter.get_input_details()

@@ -2,6 +2,7 @@ from PyQt6 import QtCore
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QPushButton, QStackedLayout
 
+from logic.style_transfer import StyleTransfer
 from widgets.generate import GenerateMenu
 from widgets.home import HomeMenu
 from widgets.library import LibraryMenu
@@ -51,6 +52,9 @@ class MainWindow(QMainWindow):
         self.stacked_layout.addWidget(self.morphing_menu)
 
         self.stacked_layout.setCurrentWidget(self.style_image_menu)
+
+        # load all models
+        StyleTransfer.load_models()
 
         # self.central_widget.setStyleSheet('border: 1px solid red')  # TODO testing purposes, remove later
 
