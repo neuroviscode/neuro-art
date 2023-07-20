@@ -24,7 +24,6 @@ class StyleVideoMenu(QWidget):
         layout.setStretch(0, 2)
         layout.setStretch(1, 2)
 
-        layout.addWidget(RightMenu())
 
         # left container
         upper_stylization_container = QWidget()
@@ -200,24 +199,6 @@ class StyleVideoMenu(QWidget):
 
     def video_duration_changed(self, duration):
         self.video_position_slider.setRange(0, duration)
-
-
-class RightMenu(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.right_menu_layout = QVBoxLayout()
-        self.setLayout(self.right_menu_layout)
-
-        self.right_menu_layout.addWidget(QLabel('Recent artworks'))
-        for i in range(5):
-            button = QPushButton()
-            button.setIcon(QIcon(f'assets/examples/recent-example-{i + 1}.png'))
-            button.setIconSize(QSize(120, 120))
-            button.setMaximumSize(200, 200)
-            self.right_menu_layout.addWidget(button)
-
-        self.right_menu_layout.addStretch()
 
 
 class StyleButton(QPushButton):
