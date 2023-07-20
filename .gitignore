@@ -3,3 +3,7 @@ __pycache__/
 assets/examples/result*
 release/
 assets/results/result*
+assets/results/*.png
+assets/results/*.jpg
+assets/results/style-image/*.png
+assets/results/style-image/*.jpg

@@ -1,9 +1,10 @@
+import logging
 import os
+from pathlib import Path
 
-import cv2 as cv
 import tensorflow as tf
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QPixmap, QIcon, QImage
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog
 
 from logic.preprocessing import preprocess_image, load_img
@@ -12,6 +13,8 @@ from logic.style_transfer import StyleTransfer
 
 class StyleMenu(QWidget):
     num_of_results = 0
+
+    STYLE_IMAGE_RESULTS = 'assets/results/style-image'
 
     def __init__(self):
 
@@ -183,8 +186,7 @@ class StyleMenu(QWidget):
         # Stylize the content image using the style bottleneck.
         result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
 
-        from PIL import Image
-        self.result_image_path = f"assets/results/result-{StyleMenu.num_of_results}.png"
+        self.result_image_path = f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{StyleMenu.num_of_results}.png'
         tf.keras.utils.save_img(self.result_image_path, result_image)
         pixmap = QPixmap(self.result_image_path)
         scaled_pixmap = pixmap.scaled(self.result_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
@@ -198,19 +200,28 @@ class StyleMenu(QWidget):
     def search_for_results():
         file_names = []
 
-        with os.scandir('assets/results') as entries:
+        logger = logging.getLogger()
+
+        if not os.path.exists(StyleMenu.STYLE_IMAGE_RESULTS):
+            logger.warning(f'Path to results {StyleMenu.STYLE_IMAGE_RESULTS} does not exist')
+            logger.warning('Creating the directory...')
+
+            style_image_results_path = Path(StyleMenu.STYLE_IMAGE_RESULTS)
+            style_image_results_path.mkdir(parents=True)
+
+        with os.scandir(StyleMenu.STYLE_IMAGE_RESULTS) as entries:
             for entry in entries:
-                if entry.is_file():
-                    if entry.name.endswith('.png'):
-                        file_names.append(entry.name)
+                if not entry.is_file():
+                    continue
+
+                if entry.name[:7] == 'result-' and entry.name.endswith('.png'):
+                    file_names.append(entry.name)
 
         if len(file_names) <= 0:
             StyleMenu.num_of_results = 0
             return
 
-        file_names = sorted(file_names)
-        last_result = file_names[-1]
-        StyleMenu.num_of_results = int(last_result[-5:-4]) + 1
+        StyleMenu.num_of_results = len(file_names)
 
 
 class RightMenu(QWidget):
@@ -223,43 +234,54 @@ class RightMenu(QWidget):
 
         self.right_menu_layout.addWidget(QLabel('Recent artworks'))
 
-        for i in range(StyleMenu.num_of_results, 0, -1):
-            if i < 0:
-                break
-
+        for i in range(0, 5):
             image = QLabel()
             image.setObjectName('right-menu-artwork')
             image.setFixedSize(120, 120)
-            self.artworks_paths.append(f'assets/results/result-{i - 1}.png')
-
-            pixmap = QPixmap(f'assets/results/result-{i - 1}.png')
+            pixmap = QPixmap()
             scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
             image.setPixmap(QPixmap(scaled_pixmap))
-
             self.right_menu_layout.addWidget(image)
 
-        for i in range(5 - StyleMenu.num_of_results):
+        images = self.findChildren(QLabel, 'right-menu-artwork')
+
+        if StyleMenu.num_of_results < 5:
+            for i in range(StyleMenu.num_of_results):
+
+                print(f'pixmap {i}')
+
+                if os.path.exists(f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{i}.png'):
+                    print(f'\tpath {StyleMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+                    self.artworks_paths.insert(0, f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+                    pixmap = QPixmap(f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+                    scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                                  Qt.TransformationMode.SmoothTransformation)
+                    images[StyleMenu.num_of_results - i - 1].setPixmap(QPixmap(scaled_pixmap))
+            return
+
+        for i in range(StyleMenu.num_of_results, StyleMenu.num_of_results - 5, -1):
             image = QLabel()
             image.setObjectName('right-menu-artwork')
             image.setFixedSize(120, 120)
-            self.artworks_paths.append(f'assets/examples/recent-example-{i + 1}.png')
-            pixmap = QPixmap(f'assets/examples/recent-example-{i + 1}.png')
+
+            self.artworks_paths.insert(0, f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+
+            pixmap = QPixmap(f'{StyleMenu.STYLE_IMAGE_RESULTS}/result-{i - 1}.png')
             scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
-            image.setPixmap(QPixmap(scaled_pixmap))
-
-            self.right_menu_layout.addWidget(image)
+            images[StyleMenu.num_of_results - i - 1] .setPixmap(QPixmap(scaled_pixmap))
 
         self.right_menu_layout.addStretch()
 
     def add_recent_artwork(self, artwork_path):
 
         self.artworks_paths.insert(0, artwork_path)
-        self.artworks_paths = self.artworks_paths[:-1]
+        if len(self.artworks_paths) > 5:
+            self.artworks_paths = self.artworks_paths[:-1]
 
         images = self.findChildren(QLabel, 'right-menu-artwork')
-        for i in range(5):
+        for i in range(min(5, StyleMenu.num_of_results)):
             pixmap = QPixmap(self.artworks_paths[i])
             scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
