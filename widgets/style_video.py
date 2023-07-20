@@ -1,9 +1,9 @@
-from PyQt6.QtCore import Qt, QSize, QUrl
+from PyQt6.QtCore import Qt, QSize, QUrl, QObject, pyqtSignal, QThread
 from PyQt6.QtGui import QPixmap, QIcon, QImage
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
-    QStyle
+    QStyle, QProgressBar
 
 from logic.style_transfer import StyleTransfer
 
@@ -23,7 +23,6 @@ class StyleVideoMenu(QWidget):
         layout.addWidget(right_container)
         layout.setStretch(0, 2)
         layout.setStretch(1, 2)
-
 
         # left container
         upper_stylization_container = QWidget()
@@ -75,7 +74,6 @@ class StyleVideoMenu(QWidget):
         self.upper_stylization_media_player.setPosition(0)
         upper_stylization_video_container_layout.addWidget(self.upper_stylization_video)
         upper_stylization_video_container.setLayout(upper_stylization_video_container_layout)
-
 
         # lower stylization buttons container
         lower_stylization_buttons_open_file_button = StyleButton('Open File', 'assets/icons/document.png',
@@ -141,9 +139,12 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.setVideoOutput(self.result_video)
         self.result_media_player.positionChanged.connect(self.video_position_changed)
         self.result_media_player.durationChanged.connect(self.video_duration_changed)
-        self.result_media_player.play() # without playing and pausing the video were not visible
+        self.result_media_player.play()  # without playing and pausing the video were not visible
         self.result_media_player.pause()
         self.result_media_player.setPosition(0)
+        self.stylization_progress_bar = QProgressBar()
+        self.stylization_progress_bar.setRange(0, 100)
+        # self.stylization_progress_bar.hide()
         self.video_position_slider = QSlider(Qt.Orientation.Horizontal)
         self.video_position_slider.setRange(0, self.upper_stylization_media_player.duration())
         self.video_position_slider.sliderMoved.connect(self.set_video_position)
@@ -151,6 +152,7 @@ class StyleVideoMenu(QWidget):
         play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         play_button.clicked.connect(self.play_button_click)
         result_video_container_layout.addWidget(self.result_video)
+        result_video_container_layout.addWidget(self.stylization_progress_bar)
         result_video_container_layout.addWidget(self.video_position_slider)
         result_video_container_layout.addWidget(play_button)
         result_video_container.setLayout(result_video_container_layout)
@@ -173,14 +175,19 @@ class StyleVideoMenu(QWidget):
         style_image_path = self.lower_stylization_image_path
         content_video_path = self.upper_stylization_video_path
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
-
-        self.result_video_path = StyleTransfer.stylize_video(content_video_path, style_image_path, content_blending_ratio)
-
-        self.result_media_player.setSource(QUrl(self.result_video_path))
-        self.result_media_player.setVideoOutput(self.result_video)
-
-        self.result_media_player.play()
-        self.upper_stylization_media_player.play()
+        #
+        # self.result_video_path = StyleTransfer.stylize_video(content_video_path, style_image_path,
+        #                                                      content_blending_ratio)
+        self.stylization_thread = QThread()
+        self.stylization_worker = StylizationWorker(StyleTransfer.stylize_video, content_video_path, style_image_path,
+                                               content_blending_ratio)
+        self.stylization_worker.moveToThread(self.stylization_thread)
+        self.stylization_thread.started.connect(self.stylization_worker.run)
+        self.stylization_worker.progress.connect(self.update_progress_bar)
+        self.stylization_worker.finished.connect(self.stylization_finished)
+        self.stylization_worker.finished.connect(self.stylization_worker.deleteLater)
+        self.stylization_thread.finished.connect(self.stylization_thread.deleteLater)
+        self.stylization_thread.start()
 
     def play_button_click(self):
         if self.result_media_player.isPlaying():
@@ -199,6 +206,23 @@ class StyleVideoMenu(QWidget):
 
     def video_duration_changed(self, duration):
         self.video_position_slider.setRange(0, duration)
+
+    def update_progress_bar(self, value):
+        self.stylization_progress_bar.setValue(value)
+
+    def stylization_finished(self, result_video_path):
+        self.result_video_path = result_video_path
+        self.result_media_player.pause()
+        self.upper_stylization_media_player.pause()
+        self.result_media_player.setPosition(0)
+        self.upper_stylization_media_player.setPosition(0)
+        self.video_position_slider.setValue(0)
+
+        self.result_media_player.setSource(QUrl(self.result_video_path))
+        self.result_media_player.setVideoOutput(self.result_video)
+
+        self.result_media_player.play()
+        self.upper_stylization_media_player.play()
 
 
 class StyleButton(QPushButton):
@@ -254,3 +278,18 @@ class StyleButton(QPushButton):
 
         if button_name == 'lower_open_button':
             open_image_from_file()
+
+
+class StylizationWorker(QObject):
+    finished = pyqtSignal(str)
+    progress = pyqtSignal(int)
+
+    def __init__(self, stylizing_function, *args, **kwargs):
+        super().__init__()
+        self.stylizing_function = stylizing_function
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        result_path = self.stylizing_function(*self.args, progress_signal=self.progress, **self.kwargs)
+        self.finished.emit(result_path)
