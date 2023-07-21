@@ -105,10 +105,6 @@ class StyleImageMenu(QWidget):
 
         # lower stylization image container
         lower_stylization_image = QLabel()
-        # image = cv.imread('assets/examples/towers-example.jpg')
-        # image.resize(256, 256)
-        # lower_stylization_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
-        #                                                            QImage.Format.Format_BGR888)))
         self.lower_stylization_image_path = 'assets/examples/towers-example.jpg'
         pixmap = QPixmap(self.lower_stylization_image_path)
         lower_stylization_image.setPixmap(pixmap)
@@ -151,11 +147,6 @@ class StyleImageMenu(QWidget):
         # result_image_container
         result_image_container_layout = QVBoxLayout()
         self.result_image = QLabel()
-        # result_image.setBaseSize(500, 500)
-        # image = cv.imread('assets/examples/style-transfer-result-example.png')
-        # image.resize(500, 500)
-        # result_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
-        #                                                 QImage.Format.Format_BGR888)))
         self.result_image_path = 'assets/examples/style-transfer-result-example.png'
         self.result_image.setPixmap(QPixmap(self.result_image_path))
         result_image_container_layout.addWidget(self.result_image)
@@ -249,11 +240,7 @@ class RightMenu(QWidget):
 
         if StyleImageMenu.num_of_results < 5:
             for i in range(StyleImageMenu.num_of_results):
-
-                print(f'pixmap {i}')
-
                 if os.path.exists(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png'):
-                    print(f'\tpath {StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
                     self.artworks_paths.insert(0, f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
                     pixmap = QPixmap(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
                     scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
