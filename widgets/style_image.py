@@ -271,7 +271,7 @@ class RightMenu(QWidget):
             pixmap = QPixmap(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i - 1}.png')
             scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
-            images[StyleImageMenu.num_of_results - i - 1] .setPixmap(QPixmap(scaled_pixmap))
+            images[StyleImageMenu.num_of_results - i] .setPixmap(QPixmap(scaled_pixmap))
 
         self.right_menu_layout.addStretch()
 
