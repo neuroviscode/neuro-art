@@ -91,8 +91,6 @@ class StyleTransfer:
 
             # print frame counter for debugging purposses
             count += 1
-            print(frames_number)
-            print(int(count*100/frames_number))
             progress_signal.emit(int(count*100/frames_number))
 
         out.release()

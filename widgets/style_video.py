@@ -124,11 +124,11 @@ class StyleVideoMenu(QWidget):
         self.stylization_slider.setSingleStep(1)
         stylization_controls_container_layout.addWidget(self.stylization_slider)
 
-        stylize_button = QPushButton('Stylize')
+        self.stylize_button = QPushButton('Stylize')
         icon = QIcon(QPixmap('assets/icons/shuffle.png'))
-        stylize_button.setIcon(icon)
-        stylize_button.clicked.connect(self.stylize_button_click)
-        stylization_controls_container_layout.addWidget(stylize_button)
+        self.stylize_button.setIcon(icon)
+        self.stylize_button.clicked.connect(self.stylize_button_click)
+        stylization_controls_container_layout.addWidget(self.stylize_button)
 
         # result_video_container
         result_video_container_layout = QVBoxLayout()
@@ -166,6 +166,7 @@ class StyleVideoMenu(QWidget):
         result_controls_container.setLayout(result_controls_layout)
 
     def stylize_button_click(self):
+        self.stylize_button.setDisabled(True)
         self.result_media_player.pause()
         self.upper_stylization_media_player.pause()
         self.result_media_player.setPosition(0)
@@ -175,9 +176,7 @@ class StyleVideoMenu(QWidget):
         style_image_path = self.lower_stylization_image_path
         content_video_path = self.upper_stylization_video_path
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
-        #
-        # self.result_video_path = StyleTransfer.stylize_video(content_video_path, style_image_path,
-        #                                                      content_blending_ratio)
+
         self.stylization_thread = QThread()
         self.stylization_worker = StylizationWorker(StyleTransfer.stylize_video, content_video_path, style_image_path,
                                                content_blending_ratio)
@@ -223,6 +222,7 @@ class StyleVideoMenu(QWidget):
 
         self.result_media_player.play()
         self.upper_stylization_media_player.play()
+        self.stylize_button.setDisabled(False)
 
 
 class StyleButton(QPushButton):
