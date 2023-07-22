@@ -183,6 +183,7 @@ class StyleVideoMenu(QWidget):
         self.stylization_worker.moveToThread(self.stylization_thread)
         self.stylization_thread.started.connect(self.stylization_worker.run)
         self.stylization_worker.progress.connect(self.update_progress_bar)
+        self.stylization_worker.finished.connect(self.stylization_thread.quit)
         self.stylization_worker.finished.connect(self.stylization_finished)
         self.stylization_worker.finished.connect(self.stylization_worker.deleteLater)
         self.stylization_thread.finished.connect(self.stylization_thread.deleteLater)
