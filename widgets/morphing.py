@@ -5,12 +5,7 @@ from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider
 
-import tensorflow as tf
-if tf.__version__ != "2.13.0":
-    from logic.morphing import morphing_handler
-else:
-    def morphing_handler(*args, **kwargs):
-        pass
+from logic.morphing import morphing_handler
 
 
 class MorphingMenu(QWidget):
@@ -122,10 +117,6 @@ class MiddleContainer(QWidget):
     def handle_slider_value_change(self):
         from main import MainWindow
         window = MainWindow.window(self)
-
-        # newest tensorflow breaks some changes, make morphing unavailable for now
-        if tf.__version__ == "2.13.0":
-            return
 
         morphing_menu = window.morphing_menu
 
