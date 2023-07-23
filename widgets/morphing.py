@@ -3,7 +3,7 @@ import numpy as np
 from PIL.Image import Image
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QFileDialog, QToolTip
 
 from logic.morphing import morphing_handler
 
@@ -23,9 +23,9 @@ class MorphingMenu(QWidget):
         self.morphing_layout.addWidget(self.left_container, 2)
         self.morphing_layout.addWidget(self.middle_container, 5)
         self.morphing_layout.addWidget(self.right_container, 2)
-        self.morphing_layout.addWidget(self.recent_artwork_container)
+        # self.morphing_layout.addWidget(self.recent_artwork_container)
 
-        self.frames = morphing_handler()
+        self.model_trained = False
 
 
 class LeftContainer(QWidget):
@@ -61,7 +61,7 @@ class LeftContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.layout.addWidget(self.button_container)
 
-        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png')
+        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png', 'left_open_button')
         self.left_library_button = MorphingButton('Select from library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.left_open_button)
         self.button_container_layout.addWidget(self.left_library_button)
@@ -102,6 +102,8 @@ class MiddleContainer(QWidget):
         self.slider.setSingleStep(1)
         self.slider.setObjectName('morphing_slider')
         self.slider.valueChanged.connect(self.handle_slider_value_change)
+        # slider is disabled till model is trained
+        self.slider.setEnabled(False)
         self.layout.addWidget(self.slider)
 
         # buttons
@@ -111,7 +113,12 @@ class MiddleContainer(QWidget):
         self.layout.addWidget(self.button_container)
 
         self.save_button = MorphingButton('Save to library', 'assets/icons/bookmark.png')
+        # button disabled until model is trained
+        self.save_button.setEnabled(False)
         self.button_container_layout.addWidget(self.save_button)
+
+        self.train_model_button = MorphingButton('Train model', 'assets/icons/rocket.png', 'button_train_model')
+        self.button_container_layout.addWidget(self.train_model_button)
         self.button_container_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
     def handle_slider_value_change(self):
@@ -122,7 +129,8 @@ class MiddleContainer(QWidget):
 
         position = self.slider.value()
 
-        morphed_image = morphing_menu.frames[position]
+        morphed_image = morphing_menu.frames[position] \
+            if position < len(morphing_menu.frames) else morphing_menu.frames[0]
         morphed_image_path = f'assets/results/morphing_{position}.jpg'
 
         morphed_image = cv2.cvtColor(morphed_image, cv2.COLOR_RGB2BGR)
@@ -167,7 +175,7 @@ class RightContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.layout.addWidget(self.button_container)
 
-        self.open_button = MorphingButton('Open file', 'assets/icons/document.png')
+        self.open_button = MorphingButton('Open file', 'assets/icons/document.png', 'right_open_button')
         self.library_button = MorphingButton('Select from library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.open_button)
         self.button_container_layout.addWidget(self.library_button)
@@ -206,3 +214,48 @@ class MorphingButton(QPushButton):
     def button_click(self):
         button = self.sender()
         button_name = button.objectName()
+
+        def open_image_from_file(button_name):
+            file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
+            if file:
+                from main import MainWindow
+                window = MainWindow.window(self)
+                morphing_menu = window.morphing_menu
+                if file[0] == '':
+                    return
+
+                image = None
+                if button_name == 'left_open_button':
+                    morphing_menu.left_container.image_path = file[0]
+                    image = morphing_menu.left_container.findChild(QLabel, 'morphing_left_image')
+                if button_name == 'right_open_button':
+                    morphing_menu.right_container.image_path = file[0]
+                    image = morphing_menu.right_container.findChild(QLabel, 'morphing_right_image')
+
+                if not image:
+                    return
+
+                pixmap = QPixmap(file[0])
+                scaled_pixmap = pixmap.scaled(image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                              Qt.TransformationMode.SmoothTransformation)
+                image.setPixmap(scaled_pixmap)
+
+                morphing_menu.model_trained = False
+                morphing_menu.middle_container.slider.setEnabled(False)
+                morphing_menu.middle_container.save_button.setEnabled(False)
+
+        if button_name == 'left_open_button' or button_name == 'right_open_button':
+            open_image_from_file(button_name)
+
+        if button_name == 'button_train_model':
+            from main import MainWindow
+            window = MainWindow.window(self)
+            morphing_menu = window.morphing_menu
+
+            morphing_menu.frames = morphing_handler(
+                image_left_path=morphing_menu.left_container.image_path,
+                image_right_path=morphing_menu.right_container.image_path)
+
+            morphing_menu.model_trained = True
+            morphing_menu.middle_container.slider.setEnabled(True)
+            morphing_menu.middle_container.save_button.setEnabled(True)

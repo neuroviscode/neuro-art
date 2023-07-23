@@ -4,12 +4,13 @@ import sys
 import cv2
 import numpy as np
 import tensorflow as tf
-import tensorflow_addons as tfa
 from tqdm import tqdm
+
+from tensorflow_addons.image.dense_image_warp import dense_image_warp
 
 ORIG_WIDTH = 0
 ORIG_HEIGHT = 0
-TRAIN_EPOCHS = 100
+TRAIN_EPOCHS = 500
 
 im_sz = 1024
 mp_sz = 96
@@ -23,28 +24,18 @@ add_first = False
 @tf.function
 def warp(origins, targets, preds_org, preds_trg):
     if add_first:
-        res_targets = tfa.image.dense_image_warp((origins + preds_org[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1,
-                                                                                                                  1 + preds_org[
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      0:3] * mult_scale),
-                                                 preds_org[:, :, :, 6:8] * im_sz * warp_scale)
-        res_origins = tfa.image.dense_image_warp((targets + preds_trg[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1,
-                                                                                                                  1 + preds_trg[
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      0:3] * mult_scale),
-                                                 preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
-    else:
-        res_targets = tfa.image.dense_image_warp(
-            origins * tf.maximum(0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale) + preds_org[:, :, :,
-                                                                                  3:6] * 2 * add_scale,
+        res_targets = dense_image_warp(
+            (origins + preds_org[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale), # noqa E501
             preds_org[:, :, :, 6:8] * im_sz * warp_scale)
-        res_origins = tfa.image.dense_image_warp(
-            targets * tf.maximum(0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale) + preds_trg[:, :, :,
-                                                                                  3:6] * 2 * add_scale,
+        res_origins = dense_image_warp(
+            (targets + preds_trg[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale), # noqa E501
+            preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
+    else:
+        res_targets = dense_image_warp(
+            origins * tf.maximum(0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale) + preds_org[:, :, :, 3:6] * 2 * add_scale,  # noqa E501
+            preds_org[:, :, :, 6:8] * im_sz * warp_scale)
+        res_origins = dense_image_warp(
+            targets * tf.maximum(0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale) + preds_trg[:, :, :, 3:6] * 2 * add_scale,  # noqa E501
             preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
 
     return res_targets, res_origins
@@ -94,11 +85,12 @@ def produce_warp_maps(origins, targets):
             res_targets_, res_origins_ = warp(origins, targets, preds[..., :8], preds[..., 8:])
 
             # warp maps consistency checker
-            res_map = tfa.image.dense_image_warp(maps, preds[:, :, :, 6:8] * im_sz * warp_scale)
-            res_map = tfa.image.dense_image_warp(res_map, preds[:, :, :, 14:16] * im_sz * warp_scale)
+            res_map = dense_image_warp(maps, preds[:, :, :, 6:8] * im_sz * warp_scale)
+            res_map = dense_image_warp(res_map, preds[:, :, :, 14:16] * im_sz * warp_scale)
 
-            loss = loss_object(maps, res_map) * 1 + loss_object(res_targets_, targets) * 0.3 + loss_object(res_origins_,
-                                                                                                           origins) * 0.3
+            loss = loss_object(maps, res_map) * 1 + \
+                   loss_object(res_targets_, targets) * 0.3 + \
+                   loss_object(res_origins_, origins) * 0.3
 
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -167,8 +159,10 @@ def training(source, target):
 
     # Checks if input and destination image are of the same dimensions.
     if dom_a.shape[1] != dom_b.shape[1] or dom_a.shape[0] != dom_b.shape[0]:
-        print("Input Image is not the same dimensions as Destination Image.")
-        sys.exit(1)
+        resulting_shape = (min(dom_a.shape[0], dom_b.shape[0]), min(dom_a.shape[1], dom_b.shape[1]))
+
+        dom_a = cv2.resize(dom_a, resulting_shape)
+        dom_b = cv2.resize(dom_b, resulting_shape)
 
     # Store original height and width
     ORIG_WIDTH = dom_a.shape[1]
@@ -185,17 +179,17 @@ def training(source, target):
     origins = dom_a.reshape(1, im_sz, im_sz, 3).astype(np.float32)
     targets = dom_b.reshape(1, im_sz, im_sz, 3).astype(np.float32)
 
-    print("Training...")
     return produce_warp_maps(origins, targets), origins, targets
 
 
-def morphing_handler():
-    origins_path, targets_path = download_data()
+def morphing_handler(image_left_path='', image_right_path=''):
 
-    predictions, origins, targets = training(origins_path, targets_path)
+    if not image_left_path and not image_right_path:
+        image_left_path, image_right_path = download_data()
+
+    predictions, origins, targets = training(image_left_path, image_right_path)
 
     steps = 50
-    print("Morphing...")
     frames = generate_frames(origins, targets, predictions, steps)  # generate frames between source and target images
 
     return frames
