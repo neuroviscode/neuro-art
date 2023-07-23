@@ -69,7 +69,7 @@ class StyleTransfer:
 
         frame_size = (384, 384)
         frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
-        frames_number = int(video_capture_object.get(cv.CAP_PROP_FRAME_COUNT))
+        frame_counter = int(video_capture_object.get(cv.CAP_PROP_FRAME_COUNT))
         out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
 
         count = 0
@@ -91,7 +91,7 @@ class StyleTransfer:
 
             # print frame counter for debugging purposses
             count += 1
-            progress_signal.emit(int(count*100/frames_number))
+            progress_signal.emit(int(count*100/frame_counter))
 
         out.release()
 
