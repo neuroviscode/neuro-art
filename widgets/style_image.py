@@ -161,6 +161,7 @@ class StyleImageMenu(QWidget):
         result_controls_container.setLayout(result_controls_layout)
 
     def stylize_button_click(self):
+        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.IMAGE)
         content_image_path = self.upper_stylization_image_path
         style_image_path = self.lower_stylization_image_path
         content_image = preprocess_image(load_img(content_image_path), 384)

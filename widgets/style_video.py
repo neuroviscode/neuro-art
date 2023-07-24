@@ -166,6 +166,7 @@ class StyleVideoMenu(QWidget):
         result_controls_container.setLayout(result_controls_layout)
 
     def stylize_button_click(self):
+        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.VIDEO)
         self.stylize_button.setDisabled(True)
         self.result_media_player.pause()
         self.upper_stylization_media_player.pause()
