@@ -1,7 +1,10 @@
-import cv2 as cv
+import logging
+import os
+from pathlib import Path
+
 import tensorflow as tf
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QPixmap, QIcon, QImage
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog
 
 from logic.preprocessing import preprocess_image, load_img
@@ -9,8 +12,16 @@ from logic.style_transfer import StyleTransfer
 
 
 class StyleImageMenu(QWidget):
+
+    num_of_results = 0
+
+    STYLE_IMAGE_RESULTS = 'assets/results/style-image'
+
     def __init__(self):
+
         super().__init__()
+
+        StyleImageMenu.search_for_results()
 
         layout = QHBoxLayout()
         self.setLayout(layout)
@@ -24,7 +35,8 @@ class StyleImageMenu(QWidget):
         layout.setStretch(0, 2)
         layout.setStretch(1, 2)
 
-        layout.addWidget(RightMenu())
+        self.right_menu = RightMenu()
+        layout.addWidget(self.right_menu)
 
         # left container
         upper_stylization_container = QWidget()
@@ -93,10 +105,6 @@ class StyleImageMenu(QWidget):
 
         # lower stylization image container
         lower_stylization_image = QLabel()
-        # image = cv.imread('assets/examples/towers-example.jpg')
-        # image.resize(256, 256)
-        # lower_stylization_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
-        #                                                            QImage.Format.Format_BGR888)))
         self.lower_stylization_image_path = 'assets/examples/towers-example.jpg'
         pixmap = QPixmap(self.lower_stylization_image_path)
         lower_stylization_image.setPixmap(pixmap)
@@ -139,12 +147,8 @@ class StyleImageMenu(QWidget):
         # result_image_container
         result_image_container_layout = QVBoxLayout()
         self.result_image = QLabel()
-        # result_image.setBaseSize(500, 500)
-        # image = cv.imread('assets/examples/style-transfer-result-example.png')
-        # image.resize(500, 500)
-        # result_image.setPixmap(QPixmap.fromImage(QImage(image, image.shape[0], image.shape[1],
-        #                                                 QImage.Format.Format_BGR888)))
-        self.result_image.setPixmap(QPixmap('assets/examples/style-transfer-result-example.png'))
+        self.result_image_path = 'assets/examples/style-transfer-result-example.png'
+        self.result_image.setPixmap(QPixmap(self.result_image_path))
         result_image_container_layout.addWidget(self.result_image)
         result_image_container.setLayout(result_image_container_layout)
 
@@ -163,20 +167,54 @@ class StyleImageMenu(QWidget):
         content_image = preprocess_image(load_img(content_image_path), 384)
         style_image = preprocess_image(load_img(style_image_path), 256)
 
-        content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
+        content_blending_ratio = (
+                                         100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
 
         # Calculate style bottleneck for the preprocessed style image.
         style_bottleneck = StyleTransfer.run_style_predict(style_image)
         style_bottleneck_content = StyleTransfer.run_style_predict(preprocess_image(content_image, 256))
-        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (1 - content_blending_ratio) * style_bottleneck
+        style_bottleneck_blended = content_blending_ratio * style_bottleneck_content + (
+                1 - content_blending_ratio) * style_bottleneck
 
         # Stylize the content image using the style bottleneck.
         result_image = StyleTransfer.run_style_transform(style_bottleneck_blended, content_image)[0]
-        from PIL import Image
-        # TODO increment counter in this path
-        result_path = "assets/examples/result0.png"
-        tf.keras.utils.save_img(result_path, result_image)
-        self.result_image.setPixmap(QPixmap(result_path))
+
+        self.result_image_path = f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{StyleImageMenu.num_of_results}.png'
+        tf.keras.utils.save_img(self.result_image_path, result_image)
+        pixmap = QPixmap(self.result_image_path)
+        scaled_pixmap = pixmap.scaled(self.result_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.result_image.setPixmap(scaled_pixmap)
+
+        StyleImageMenu.num_of_results += 1
+        self.right_menu.add_recent_artwork(self.result_image_path)
+
+    @staticmethod
+    def search_for_results():
+        file_names = []
+
+        logger = logging.getLogger()
+
+        if not os.path.exists(StyleImageMenu.STYLE_IMAGE_RESULTS):
+            logger.warning(f'Path to results {StyleImageMenu.STYLE_IMAGE_RESULTS} does not exist')
+            logger.warning('Creating the directory...')
+
+            style_image_results_path = Path(StyleImageMenu.STYLE_IMAGE_RESULTS)
+            style_image_results_path.mkdir(parents=True)
+
+        with os.scandir(StyleImageMenu.STYLE_IMAGE_RESULTS) as entries:
+            for entry in entries:
+                if not entry.is_file():
+                    continue
+
+                if entry.name[:7] == 'result-' and entry.name.endswith('.png'):
+                    file_names.append(entry.name)
+
+        if len(file_names) <= 0:
+            StyleImageMenu.num_of_results = 0
+            return
+
+        StyleImageMenu.num_of_results = len(file_names)
 
 
 class RightMenu(QWidget):
@@ -185,16 +223,58 @@ class RightMenu(QWidget):
 
         self.right_menu_layout = QVBoxLayout()
         self.setLayout(self.right_menu_layout)
+        self.artworks_paths = []
 
         self.right_menu_layout.addWidget(QLabel('Recent artworks'))
-        for i in range(5):
-            button = QPushButton()
-            button.setIcon(QIcon(f'assets/examples/recent-example-{i + 1}.png'))
-            button.setIconSize(QSize(120, 120))
-            button.setMaximumSize(200, 200)
-            self.right_menu_layout.addWidget(button)
+
+        for i in range(0, 5):
+            image = QLabel()
+            image.setObjectName('right-menu-artwork')
+            image.setFixedSize(120, 120)
+            pixmap = QPixmap()
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            image.setPixmap(QPixmap(scaled_pixmap))
+            self.right_menu_layout.addWidget(image)
+
+        images = self.findChildren(QLabel, 'right-menu-artwork')
+
+        if StyleImageMenu.num_of_results < 5:
+            for i in range(StyleImageMenu.num_of_results):
+                if os.path.exists(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png'):
+                    self.artworks_paths.insert(0, f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+                    pixmap = QPixmap(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+                    scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                                  Qt.TransformationMode.SmoothTransformation)
+                    images[StyleImageMenu.num_of_results - i - 1].setPixmap(QPixmap(scaled_pixmap))
+            return
+
+        for i in range(StyleImageMenu.num_of_results, StyleImageMenu.num_of_results - 5, -1):
+            image = QLabel()
+            image.setObjectName('right-menu-artwork')
+            image.setFixedSize(120, 120)
+
+            self.artworks_paths.insert(0, f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i}.png')
+
+            pixmap = QPixmap(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i - 1}.png')
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            images[StyleImageMenu.num_of_results - i] .setPixmap(QPixmap(scaled_pixmap))
 
         self.right_menu_layout.addStretch()
+
+    def add_recent_artwork(self, artwork_path):
+
+        self.artworks_paths.insert(0, artwork_path)
+        if len(self.artworks_paths) > 5:
+            self.artworks_paths = self.artworks_paths[:-1]
+
+        images = self.findChildren(QLabel, 'right-menu-artwork')
+        for i in range(min(5, StyleImageMenu.num_of_results)):
+            pixmap = QPixmap(self.artworks_paths[i])
+            scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            images[i].setPixmap(QPixmap(scaled_pixmap))
 
 
 class StyleButton(QPushButton):
