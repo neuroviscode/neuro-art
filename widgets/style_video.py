@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt, QSize, QUrl, QObject, pyqtSignal, QThread
-from PyQt6.QtGui import QPixmap, QIcon, QImage
+from PyQt6.QtCore import Qt, QUrl, QObject, pyqtSignal, QThread
+from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
@@ -9,6 +9,7 @@ from logic.style_transfer import StyleTransfer
 
 
 class StyleVideoMenu(QWidget):
+    """Class defining GUI for video style transfer module"""
     def __init__(self):
         super().__init__()
 
@@ -52,10 +53,13 @@ class StyleVideoMenu(QWidget):
         lower_stylization_container.setLayout(lower_stylization_container_layout)
 
         # upper stylization buttons container
-        upper_stylization_buttons_open_file_button = StyleButton('Open File', 'assets/icons/document.png',
-                                                                 'upper_open_button')
-        upper_stylization_buttons_select_button = StyleButton("Select From Library", 'assets/icons/bookmark.png',
-                                                              'upper_library_button')
+        upper_stylization_buttons_open_file_button = StyleButton(label='Open File',
+                                                                 icon_image_path='assets/icons/document.png',
+                                                                 button_name='upper_open_button',
+                                                                 callback=self.open_video_from_file)
+        upper_stylization_buttons_select_button = StyleButton(label='Select From Library',
+                                                              icon_image_path='assets/icons/bookmark.png',
+                                                              button_name='upper_library_button')
         upper_stylization_buttons_layout = QVBoxLayout()
         upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_open_file_button)
         upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_select_button)
@@ -69,19 +73,23 @@ class StyleVideoMenu(QWidget):
         self.upper_stylization_video = QVideoWidget()
         self.upper_stylization_media_player.setVideoOutput(self.upper_stylization_video)
         self.upper_stylization_video.setObjectName('upper_stylization_video')
-        self.upper_stylization_media_player.play()
+        self.upper_stylization_media_player.play()  # without playing and pausing the video were not visible
         self.upper_stylization_media_player.pause()
         self.upper_stylization_media_player.setPosition(0)
         upper_stylization_video_container_layout.addWidget(self.upper_stylization_video)
         upper_stylization_video_container.setLayout(upper_stylization_video_container_layout)
 
         # lower stylization buttons container
-        lower_stylization_buttons_open_file_button = StyleButton('Open File', 'assets/icons/document.png',
-                                                                 'lower_open_button')
-        lower_stylization_buttons_select_button = StyleButton("Select From Library", 'assets/icons/bookmark.png',
-                                                              'lower_library_button')
-        lower_stylization_buttons_wikiart_button = StyleButton("Random WikiArt Image", 'assets/icons/shuffle.png',
-                                                               'lower_wikiart_button')
+        lower_stylization_buttons_open_file_button = StyleButton(label='Open File',
+                                                                 icon_image_path='assets/icons/document.png',
+                                                                 button_name='lower_open_button',
+                                                                 callback=self.open_image_from_file)
+        lower_stylization_buttons_select_button = StyleButton(label='Select From Library',
+                                                              icon_image_path='assets/icons/bookmark.png',
+                                                              button_name='lower_library_button')
+        lower_stylization_buttons_wikiart_button = StyleButton(label='Random WikiArt Image',
+                                                               icon_image_path='assets/icons/shuffle.png',
+                                                               button_name='lower_wikiart_button')
         lower_stylization_buttons_layout = QVBoxLayout()
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_open_file_button)
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_select_button)
@@ -90,14 +98,14 @@ class StyleVideoMenu(QWidget):
         lower_stylization_buttons_container.setLayout(lower_stylization_buttons_layout)
 
         # lower stylization image container
-        lower_stylization_image = QLabel()
+        self.lower_stylization_image = QLabel()
         self.lower_stylization_image_path = 'assets/examples/towers-example.jpg'
         pixmap = QPixmap(self.lower_stylization_image_path)
-        lower_stylization_image.setPixmap(pixmap)
-        lower_stylization_image.setObjectName('lower_stylization_image')
-        lower_stylization_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lower_stylization_image.setFixedSize(pixmap.size())
-        lower_stylization_container_layout.addWidget(lower_stylization_image)
+        self.lower_stylization_image.setPixmap(pixmap)
+        self.lower_stylization_image.setObjectName('lower_stylization_image')
+        self.lower_stylization_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lower_stylization_image.setFixedSize(pixmap.size())
+        lower_stylization_container_layout.addWidget(self.lower_stylization_image)
 
         # right container
         right_container_layout = QVBoxLayout()
@@ -144,7 +152,6 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.setPosition(0)
         self.stylization_progress_bar = QProgressBar()
         self.stylization_progress_bar.setRange(0, 100)
-        # self.stylization_progress_bar.hide()
         self.video_position_slider = QSlider(Qt.Orientation.Horizontal)
         self.video_position_slider.setRange(0, self.upper_stylization_media_player.duration())
         self.video_position_slider.sliderMoved.connect(self.set_video_position)
@@ -165,14 +172,11 @@ class StyleVideoMenu(QWidget):
         result_controls_layout.setRowStretch(1, 1)
         result_controls_container.setLayout(result_controls_layout)
 
-    def stylize_button_click(self):
-        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.VIDEO)
+    def stylize_button_click(self) -> None:
+        """Callback to stylize button, starts stylization process in a separate thread"""
+        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.VIDEO)  # set proper stylization models as active
         self.stylize_button.setDisabled(True)
-        self.result_media_player.pause()
-        self.upper_stylization_media_player.pause()
-        self.result_media_player.setPosition(0)
-        self.upper_stylization_media_player.setPosition(0)
-        self.video_position_slider.setValue(0)
+        self.reset_videos_state()
 
         style_image_path = self.lower_stylization_image_path
         content_video_path = self.upper_stylization_video_path
@@ -180,7 +184,7 @@ class StyleVideoMenu(QWidget):
 
         self.stylization_thread = QThread()
         self.stylization_worker = StylizationWorker(StyleTransfer.stylize_video, content_video_path, style_image_path,
-                                               content_blending_ratio)
+                                                    content_blending_ratio)
         self.stylization_worker.moveToThread(self.stylization_thread)
         self.stylization_thread.started.connect(self.stylization_worker.run)
         self.stylization_worker.progress.connect(self.update_progress_bar)
@@ -190,7 +194,8 @@ class StyleVideoMenu(QWidget):
         self.stylization_thread.finished.connect(self.stylization_thread.deleteLater)
         self.stylization_thread.start()
 
-    def play_button_click(self):
+    def play_button_click(self) -> None:
+        """Callback to play button"""
         if self.result_media_player.isPlaying():
             self.result_media_player.pause()
             self.upper_stylization_media_player.pause()
@@ -198,26 +203,32 @@ class StyleVideoMenu(QWidget):
             self.result_media_player.play()
             self.upper_stylization_media_player.play()
 
-    def set_video_position(self, position):
+    def set_video_position(self, position: int) -> None:
+        """Callback to moving slider
+        :param position: expressed in milliseconds since the beginning of the media"""
         self.result_media_player.setPosition(position)
         self.upper_stylization_media_player.setPosition(position)
 
-    def video_position_changed(self, position):
+    def video_position_changed(self, position: int) -> None:
+        """Callback to video position changed in QMediaPlayer
+        :param position: expressed in milliseconds since the beginning of the media"""
         self.video_position_slider.setValue(position)
 
-    def video_duration_changed(self, duration):
+    def video_duration_changed(self, duration: int) -> None:
+        """Callback to video duration changed in QMediaPlayer
+        :param duration: total playback time in milliseconds"""
         self.video_position_slider.setRange(0, duration)
 
-    def update_progress_bar(self, value):
+    def update_progress_bar(self, value: int) -> None:
+        """Callback to stylization progress signal
+        :param value: value between 0 and 100"""
         self.stylization_progress_bar.setValue(value)
 
-    def stylization_finished(self, result_video_path):
+    def stylization_finished(self, result_video_path: str) -> None:
+        """Callback to stylization finished signal, handles setting proper videos in widgets
+        :param result_video_path: path of the stylized video"""
         self.result_video_path = result_video_path
-        self.result_media_player.pause()
-        self.upper_stylization_media_player.pause()
-        self.result_media_player.setPosition(0)
-        self.upper_stylization_media_player.setPosition(0)
-        self.video_position_slider.setValue(0)
+        self.reset_videos_state()
 
         self.result_media_player.setSource(QUrl(self.result_video_path))
         self.result_media_player.setVideoOutput(self.result_video)
@@ -226,63 +237,62 @@ class StyleVideoMenu(QWidget):
         self.upper_stylization_media_player.play()
         self.stylize_button.setDisabled(False)
 
+    def reset_videos_state(self) -> None:
+        """Reset both of the videos to their starting point"""
+        self.result_media_player.pause()
+        self.upper_stylization_media_player.pause()
+        self.result_media_player.setPosition(0)
+        self.upper_stylization_media_player.setPosition(0)
+        self.video_position_slider.setValue(0)
+
+    def open_video_from_file(self) -> None:
+        """Callback to open button"""
+        file = QFileDialog.getOpenFileName(self, 'Select a video', '.', 'Videos (*.mp4 *.avi)')
+        if file:
+            if file[0] == '':
+                return
+            self.reset_videos_state()
+
+            self.upper_stylization_video_path = file[0]
+            self.upper_stylization_media_player.setSource(QUrl(self.upper_stylization_video_path))
+            self.upper_stylization_media_player.setVideoOutput(self.upper_stylization_video)
+            self.upper_stylization_media_player.play()
+
+    def open_image_from_file(self) -> None:
+        """Callback to open button"""
+        file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
+        if file:
+            if file[0] == '':
+                return
+            pixmap = QPixmap(file[0])
+            self.lower_stylization_image_path = file[0]
+            scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            self.lower_stylization_image.setPixmap(scaled_pixmap)
+
 
 class StyleButton(QPushButton):
 
-    def __init__(self, label, image_path, button_name: str = ''):
+    def __init__(self, label: str, icon_image_path: str, button_name: str = '', callback=None):
+        """
+        :param label: text to put on the button
+        :param icon_image_path: path to icon image
+        :param button_name: object name
+        :param callback: function to call on button click event
+        """
         super().__init__()
 
-        icon = QIcon(QPixmap(image_path))
+        icon = QIcon(QPixmap(icon_image_path))
         self.setIcon(icon)
         self.setText(label)
         self.setStyleSheet('text-align: left; padding: 5px')
         self.setObjectName(button_name)
-        self.clicked.connect(self.button_click)
-
-    def button_click(self):
-        button = self.sender()
-        button_name = button.objectName()
-
-        def open_video_from_file():
-            file = QFileDialog.getOpenFileName(self, 'Select a video', '.', 'Videos (*.mp4)')
-            if file:
-                from main import MainWindow
-                window = MainWindow.window(self)
-                style_menu: StyleVideoMenu = window.style_video_menu
-                if file[0] == '':
-                    return
-                style_menu.result_media_player.pause()
-                style_menu.upper_stylization_media_player.pause()
-
-                style_menu.upper_stylization_video_path = file[0]
-                style_menu.upper_stylization_media_player.setSource(QUrl(style_menu.upper_stylization_video_path))
-                style_menu.upper_stylization_media_player.setVideoOutput(style_menu.upper_stylization_video)
-                style_menu.upper_stylization_media_player.play()
-
-        def open_image_from_file():
-            file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
-            if file:
-                from main import MainWindow
-                window = MainWindow.window(self)
-                style_menu: StyleVideoMenu = window.style_video_menu
-                image = style_menu.findChild(QLabel, 'lower_stylization_image')
-                if file[0] == '':
-                    return
-                pixmap = QPixmap(file[0])
-                style_menu.lower_stylization_image_path = file[0]
-
-                scaled_pixmap = pixmap.scaled(image.size(), Qt.AspectRatioMode.KeepAspectRatio,
-                                              Qt.TransformationMode.SmoothTransformation)
-                image.setPixmap(scaled_pixmap)
-
-        if button_name == 'upper_open_button':
-            open_video_from_file()
-
-        if button_name == 'lower_open_button':
-            open_image_from_file()
+        if callback:
+            self.clicked.connect(callback)
 
 
 class StylizationWorker(QObject):
+    """Class defining worker used for stylization process in a separate thread"""
     finished = pyqtSignal(str)
     progress = pyqtSignal(int)
 
