@@ -1,3 +1,5 @@
+import os
+
 import tensorflow as tf
 import cv2 as cv
 
@@ -131,13 +133,14 @@ class StyleTransfer:
         :param progress_signal: signal to emit every frame
         :return: path to result video
         """
+        result_video_path = StyleTransfer.find_next_result_video_path()
         style_image = preprocess_image(load_img(style_image_path), 256)
         video_capture_object = cv.VideoCapture(content_video_path)
 
         frame_size = (384, 384)
         frame_rate = video_capture_object.get(cv.CAP_PROP_FPS)
         frame_counter = int(video_capture_object.get(cv.CAP_PROP_FRAME_COUNT))
-        out = cv.VideoWriter("assets/results/result_video.avi", cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
+        out = cv.VideoWriter(result_video_path, cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
 
         count = 0
         while True:
@@ -158,6 +161,21 @@ class StyleTransfer:
 
         out.release()
 
-        result_video_path = "assets/results/result_video.avi"
-
         return result_video_path
+
+    @staticmethod
+    def find_next_result_video_path():
+        """Finds next video path to use"""
+        directory_path = "assets/results/style-video"
+
+        max_number = 0
+        with os.scandir(directory_path) as entries:
+            for entry in entries:
+                if not entry.is_file():
+                    continue
+
+                if entry.name[:7] == 'result-':
+                    if int(entry.name[7]) > max_number:
+                        max_number = int(entry.name[7])
+
+        return f"{directory_path}/result-{max_number+1}.avi"

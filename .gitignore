@@ -7,3 +7,5 @@ assets/results/*.png
 assets/results/*.jpg
 assets/results/style-image/*.png
 assets/results/style-image/*.jpg
+assets/results/style-video/*.avi
+assets/results/style-video/*.mp4
