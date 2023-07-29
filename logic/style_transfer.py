@@ -5,7 +5,7 @@ from enum import Enum
 
 from PyQt6.QtCore import pyqtSignal
 
-from logic.preprocessing import preprocess_image, load_img
+from logic.preprocessing import preprocess_image, load_img, convert_opencv_image_to_tensor
 
 
 class StyleTransfer:
@@ -145,11 +145,7 @@ class StyleTransfer:
             if not success:
                 break
 
-            image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-            image = tf.convert_to_tensor(image, dtype=tf.uint8)
-            image = tf.image.convert_image_dtype(image, tf.float32)
-            image = image[tf.newaxis, :]
-            content_image_frame = preprocess_image(image, 384)
+            content_image_frame = preprocess_image(convert_opencv_image_to_tensor(image), 384)
 
             result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
             result_image_frame = cv.normalize(result_image_frame, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
