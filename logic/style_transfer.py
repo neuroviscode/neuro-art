@@ -64,7 +64,7 @@ class StyleTransfer:
     @classmethod
     def run_style_predict(cls, preprocessed_style_image):
         """Function to run style prediction on preprocessed style image
-        :param preprocessed_style_image: image as a tensor of shape (batch_size=1, width=256, height=256, rgb=3)
+        :param preprocessed_style_image: image as a tensor of shape, e.g. (batch_size=1, width=256, height=256, rgb=3)
         :return: numpy array defining style of an image"""
         interpreter = tf.lite.Interpreter(model_path=cls.active_style_predict_model_path)
 
