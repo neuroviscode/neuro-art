@@ -34,7 +34,7 @@ def preprocess_image(image, target_dim: int):
 
 
 def convert_opencv_image_to_tensor(image):
-    """Convert loaded opencv image to tensor with batch dimension and rgb values betwwen 0.0 and 1.0
+    """Convert loaded opencv image to tensor with batch dimension and RGB values between 0.0 and 1.0
     :param image: opencv image in with BGR color coding"""
     image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
     image = tf.convert_to_tensor(image, dtype=tf.uint8)
