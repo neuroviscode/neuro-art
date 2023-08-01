@@ -13,7 +13,7 @@ from logic.preprocessing import preprocess_image, load_img, convert_opencv_image
 class StyleTransfer:
     """Class for logic for style transfer module"""
     class StyleTransferMode(Enum):
-        """Enum which defines models used for stylizing, it can be set by set_mode() method"""
+        """Enum which defines a chosen model used for stylizing, it can be set by set_mode() method"""
         IMAGE = 0,
         VIDEO = 1
 
