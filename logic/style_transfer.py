@@ -27,7 +27,7 @@ class StyleTransfer:
 
     @classmethod
     def set_mode(cls, mode: StyleTransferMode):
-        """sets chosen mode as active which means that models proper to that mode will be used for stylizing
+        """sets chosen mode as active which means that models corresponding to that mode will be used for stylizing
         :param mode: enum defining mode"""
         match mode:
             case cls.StyleTransferMode.IMAGE:
