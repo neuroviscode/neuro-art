@@ -84,7 +84,7 @@ class StyleTransfer:
     def run_style_transform(cls, style_bottleneck, preprocessed_content_image):
         """Run style transform on preprocessed style image
         :param style_bottleneck: numpy array defining style of an image
-        :param preprocessed_content_image: image as a tensor of shape (batch_size=1, width=384, height=384, rgb=3)
+        :param preprocessed_content_image: image as a tensor of shape, e.g. (batch_size=1, width=384, height=384, rgb=3)
         :return: result image as numpy array of the same shape as preprocessed_content_image"""
         interpreter = tf.lite.Interpreter(model_path=cls.active_style_transform_model_path)
 
