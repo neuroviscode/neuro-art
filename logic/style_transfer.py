@@ -45,14 +45,14 @@ class StyleTransfer:
         """should be called at the start of the program, loads all models used for stylization"""
         # models for images
         cls.style_predict_image_model_path = tf.keras.utils.get_file('style_predict.tflite',
-                                                                     'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/prediction/1?lite-format=tflite')
+                                                                     'https://tfhub.dev/sayakpaul/lite-model/arbitrary-image-stylization-inceptionv3/int8/predict/1?lite-format=tflite')
 
         cls.style_transform_image_model_path = tf.keras.utils.get_file('style_transform.tflite',
                                                                        'https://tfhub.dev/sayakpaul/lite-model/arbitrary-image-stylization-inceptionv3/int8/transfer/1?lite-format=tflite')
 
         # models for video
         cls.style_predict_video_model_path = tf.keras.utils.get_file('style_predict.tflite',
-                                                                     'https://tfhub.dev/sayakpaul/lite-model/arbitrary-image-stylization-inceptionv3/int8/predict/1?lite-format=tflite')
+                                                                     'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/prediction/1?lite-format=tflite')
 
         cls.style_transform_video_model_path = tf.keras.utils.get_file('style_transform.tflite',
                                                                        'https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/transfer/1?lite-format=tflite')
