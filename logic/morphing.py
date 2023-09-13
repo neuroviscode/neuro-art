@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
+from PyQt6.QtCore import pyqtSignal
 from tqdm import tqdm
 
 ORIG_WIDTH = 0
@@ -57,7 +58,7 @@ def create_grid(scale):
     return grid
 
 
-def produce_warp_maps(origins, targets):
+def produce_warp_maps(origins, targets, progress_signal: pyqtSignal(int)):
     class MyModel(tf.keras.Model):
         def __init__(self):
             super(MyModel, self).__init__()
@@ -121,16 +122,20 @@ def produce_warp_maps(origins, targets):
 
         train_step(maps, origins, targets)
 
+        progress_signal.emit(int(i * 100 / TRAIN_EPOCHS))
+
         if (epoch < 100 and epoch % 10 == 0) or \
                 (epoch < 1000 and epoch % 100 == 0) or \
                 (epoch % 1000 == 0):
             preds = model(maps, training=False)[:1]
             preds = tf.image.resize(preds, [im_sz, im_sz])
 
+    progress_signal.emit(int(100))
+
     return preds
 
 
-def generate_frames(origins, targets, preds, steps=100):
+def generate_frames(origins, targets, preds, progress_signal: pyqtSignal(int), steps=100):
     # apply maps
     org_strength = tf.reshape(tf.range(steps, dtype=tf.float32), [steps, 1, 1, 1]) / (steps - 1)
     trg_strength = tf.reverse(org_strength, axis=[0])
@@ -149,6 +154,9 @@ def generate_frames(origins, targets, preds, steps=100):
 
         img = ((res_numpy[0] + 1) * 127.5).astype(np.uint8)
         frames.append(img)
+        progress_signal.emit(int(i * 100 / steps))
+
+    progress_signal.emit(int(100))
 
     return frames
 
@@ -161,7 +169,7 @@ def download_data() -> tuple:
     return source, target
 
 
-def training(source, target):
+def training(source, target, progress_signal: pyqtSignal(int)):
     dom_a = cv2.imread(source, cv2.IMREAD_COLOR)
     dom_b = cv2.imread(target, cv2.IMREAD_COLOR)
 
@@ -186,17 +194,18 @@ def training(source, target):
     targets = dom_b.reshape(1, im_sz, im_sz, 3).astype(np.float32)
 
     print("Training...")
-    return produce_warp_maps(origins, targets), origins, targets
+    return produce_warp_maps(origins, targets, progress_signal), origins, targets
 
 
-def morphing_handler():
+def morphing_handler(training_signal: pyqtSignal(int), morphing_signal: pyqtSignal(int)):
+    print('morphing_handler')
     origins_path, targets_path = download_data()
 
-    predictions, origins, targets = training(origins_path, targets_path)
+    predictions, origins, targets = training(origins_path, targets_path, training_signal)
 
     steps = 50
     print("Morphing...")
-    frames = generate_frames(origins, targets, predictions, steps)  # generate frames between source and target images
+    frames = generate_frames(origins, targets, predictions, morphing_signal, steps=steps)  # generate frames between source and target images
 
     return frames
 

@@ -1,11 +1,13 @@
+import copy
+
 import cv2
 import numpy as np
 from PIL.Image import Image
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QProgressBar
 
-from logic.morphing import morphing_handler
+from logic import morphing
 
 
 class MorphingMenu(QWidget):
@@ -25,7 +27,7 @@ class MorphingMenu(QWidget):
         self.morphing_layout.addWidget(self.right_container, 2)
         self.morphing_layout.addWidget(self.recent_artwork_container)
 
-        self.frames = morphing_handler()
+        self.frames = []
 
 
 class LeftContainer(QWidget):
@@ -71,6 +73,9 @@ class MiddleContainer(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.morphing_thread = QThread()
+        self.morphing_worker = MorphingWorker(morphing.morphing_handler)
+
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -104,15 +109,42 @@ class MiddleContainer(QWidget):
         self.slider.valueChanged.connect(self.handle_slider_value_change)
         self.layout.addWidget(self.slider)
 
+        # progress bar
+        self.progress_bar_container = QWidget()
+        self.progress_bar_container_layout = QVBoxLayout()
+        self.progress_bar_container.setLayout(self.progress_bar_container_layout)
+        self.layout.addWidget(self.progress_bar_container)
+
+        self.training_label = QLabel('Training progress')
+        self.training_label.setStyleSheet('padding-top: 20px')
+        self.progress_bar_container_layout.addWidget(self.training_label)
+        self.morphing_train_progress_bar = QProgressBar()
+        self.morphing_train_progress_bar.setRange(0, 100)
+        self.progress_bar_container_layout.addWidget(self.morphing_train_progress_bar)
+
+        self.progress_bar_container_layout.addWidget(QLabel('Morphing progress'))
+        self.morphing_morph_progress_bar = QProgressBar()
+        self.morphing_morph_progress_bar.setRange(0, 100)
+        self.progress_bar_container_layout.addWidget(self.morphing_morph_progress_bar)
+
         # buttons
         self.button_container = QWidget()
         self.button_container_layout = QHBoxLayout()
         self.button_container.setLayout(self.button_container_layout)
-        self.layout.addWidget(self.button_container)
+        self.button_container_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.save_button = MorphingButton('Save to library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.save_button)
-        self.button_container_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.train_button = MorphingButton(
+            'Train model',
+            'assets/icons/refresh.png',
+            callback=self.start_morphing_training
+        )
+
+        self.button_container_layout.addWidget(self.train_button)
+        self.layout.addWidget(self.button_container)
+        self.slider.setDisabled(True)
 
     def handle_slider_value_change(self):
         from main import MainWindow
@@ -123,7 +155,7 @@ class MiddleContainer(QWidget):
         position = self.slider.value()
 
         morphed_image = morphing_menu.frames[position]
-        morphed_image_path = f'assets/results/morphing_{position}.jpg'
+        morphed_image_path = f'assets/results/morphing/morphing_{position}.jpg'
 
         morphed_image = cv2.cvtColor(morphed_image, cv2.COLOR_RGB2BGR)
         cv2.imwrite(morphed_image_path, morphed_image)
@@ -132,6 +164,63 @@ class MiddleContainer(QWidget):
         scaled_pixmap = pixmap.scaled(self.image.size(), Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
         self.image.setPixmap(scaled_pixmap)
+
+    def start_morphing_training(self):
+        print('start training')
+        self.save_button.setDisabled(True)
+        self.train_button.setDisabled(True)
+
+
+        self.morphing_worker.moveToThread(self.morphing_thread)
+        self.morphing_thread.started.connect(self.morphing_worker.run)
+        self.morphing_worker.training_progress.connect(self.update_training_progress_bar)
+        self.morphing_worker.morphing_progress.connect(self.update_morphing_progress_bar)
+        self.morphing_worker.finished.connect(self.morphing_thread.quit)
+        self.morphing_worker.finished.connect(self.morphing_training_finished)
+        self.morphing_worker.finished.connect(self.morphing_thread.deleteLater)
+
+        print('start thread')
+        self.morphing_thread.start()
+
+    def morphing_training_finished(self, frames: list):
+        print('morphing finished')
+        from main import MainWindow
+        window = MainWindow.window(self)
+        morphing_menu = window.morphing_menu
+
+        morphing_menu.frames = copy.deepcopy(frames)
+
+        self.save_button.setDisabled(False)
+        self.train_button.setDisabled(False)
+        self.slider.setDisabled(False)
+
+    def update_training_progress_bar(self, value: int) -> None:
+        """
+        Updates morphing train progress bar to the passed value
+
+        Parameters
+        ----------
+        value: int
+            Value between 1 and 100 to set the progress bar to
+        """
+        if value < 0 or value > 100:
+            raise ValueError('Progress bar value must be between <0, 100>')
+
+        self.morphing_train_progress_bar.setValue(value)
+
+    def update_morphing_progress_bar(self, value: int) -> None:
+        """
+        Updates morphing train progress bar to the passed value
+
+        Parameters
+        ----------
+        value: int
+            Value between 1 and 100 to set the progress bar to
+        """
+        if value < 0 or value > 100:
+            raise ValueError('Progress bar value must be between <0, 100>')
+
+        self.morphing_morph_progress_bar.setValue(value)
 
 
 class RightContainer(QWidget):
@@ -193,7 +282,7 @@ class RecentArtworkMenu(QWidget):
 
 class MorphingButton(QPushButton):
 
-    def __init__(self, label: str, image_path: str, button_name: str = ''):
+    def __init__(self, label: str, image_path: str, button_name: str = '', callback=None):
         super().__init__()
 
         icon = QIcon(QPixmap(image_path))
@@ -201,8 +290,26 @@ class MorphingButton(QPushButton):
         self.setText(label)
         self.setStyleSheet('text-align: left; padding: 5px')
         self.setObjectName(button_name)
-        self.clicked.connect(self.button_click)
+        if callback:
+            self.clicked.connect(callback)
 
-    def button_click(self):
-        button = self.sender()
-        button_name = button.objectName()
+
+class MorphingWorker(QObject):
+    """Class defining worker used for morphing process in a separate thread"""
+    finished = pyqtSignal(list)
+    training_progress = pyqtSignal(int)
+    morphing_progress = pyqtSignal(int)
+
+    def __init__(self, morphing_callback, *args, **kwargs):
+        super().__init__()
+        self.morphing_callback = morphing_callback
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        result = self.morphing_callback(
+            *self.args, **self.kwargs,
+            training_signal=self.training_progress,
+            morphing_signal=self.morphing_progress)
+
+        self.finished.emit(result)
