@@ -1,11 +1,12 @@
 import copy
+import os
 
 import cv2
 import numpy as np
 from PIL.Image import Image
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QProgressBar
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QProgressBar, QFileDialog
 
 from logic import morphing
 
@@ -20,12 +21,10 @@ class MorphingMenu(QWidget):
         self.left_container = LeftContainer()
         self.middle_container = MiddleContainer()
         self.right_container = RightContainer()
-        self.recent_artwork_container = RecentArtworkMenu()
 
         self.morphing_layout.addWidget(self.left_container, 2)
         self.morphing_layout.addWidget(self.middle_container, 5)
         self.morphing_layout.addWidget(self.right_container, 2)
-        self.morphing_layout.addWidget(self.recent_artwork_container)
 
         self.frames = []
 
@@ -48,7 +47,7 @@ class LeftContainer(QWidget):
         self.layout.addWidget(self.image_container)
 
         self.image = QLabel()
-        self.image_path = 'assets/examples/morphing-example-left.jpg'
+        self.image_path = os.getcwd() + '/assets/examples/morphing-example-left.jpg'
         pixmap = QPixmap(self.image_path)
         scaled_pixmap = pixmap.scaled(self.image.size() * 0.6, Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
@@ -63,10 +62,21 @@ class LeftContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.layout.addWidget(self.button_container)
 
-        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png')
+        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png', callback=self.open_image_picker)
         self.left_library_button = MorphingButton('Select from library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.left_open_button)
         self.button_container_layout.addWidget(self.left_library_button)
+
+    def open_image_picker(self) -> None:
+        file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
+        if file:
+            if file[0] == '':
+                return
+            pixmap = QPixmap(file[0])
+            self.image_path = file[0]
+            scaled_pixmap = pixmap.scaled(self.image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            self.image.setPixmap(scaled_pixmap)
 
 
 class MiddleContainer(QWidget):
@@ -166,24 +176,26 @@ class MiddleContainer(QWidget):
         self.image.setPixmap(scaled_pixmap)
 
     def start_morphing_training(self):
-        print('start training')
         self.save_button.setDisabled(True)
         self.train_button.setDisabled(True)
 
-
         self.morphing_worker.moveToThread(self.morphing_thread)
-        self.morphing_thread.started.connect(self.morphing_worker.run)
+
+        from main import MainWindow
+        window = MainWindow.window(self)
+        left_path = window.morphing_menu.left_container.image_path
+        right_path = window.morphing_menu.right_container.image_path
+
+        self.morphing_thread.started.connect(lambda: self.morphing_worker.run(left_path, right_path))
         self.morphing_worker.training_progress.connect(self.update_training_progress_bar)
         self.morphing_worker.morphing_progress.connect(self.update_morphing_progress_bar)
         self.morphing_worker.finished.connect(self.morphing_thread.quit)
         self.morphing_worker.finished.connect(self.morphing_training_finished)
         self.morphing_worker.finished.connect(self.morphing_thread.deleteLater)
 
-        print('start thread')
         self.morphing_thread.start()
 
     def morphing_training_finished(self, frames: list):
-        print('morphing finished')
         from main import MainWindow
         window = MainWindow.window(self)
         morphing_menu = window.morphing_menu
@@ -241,7 +253,7 @@ class RightContainer(QWidget):
         self.layout.addWidget(self.image_container)
 
         self.image = QLabel()
-        self.image_path = 'assets/examples/morphing-example-right.jpg'
+        self.image_path = os.getcwd() + '/assets/examples/morphing-example-right.jpg'
         pixmap = QPixmap(self.image_path)
         scaled_pixmap = pixmap.scaled(self.image.size() * 0.6, Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
@@ -256,28 +268,24 @@ class RightContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.layout.addWidget(self.button_container)
 
-        self.open_button = MorphingButton('Open file', 'assets/icons/document.png')
+        self.open_button = MorphingButton(
+            'Open file',
+            'assets/icons/document.png',
+            callback=self.open_image_picker)
         self.library_button = MorphingButton('Select from library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.open_button)
         self.button_container_layout.addWidget(self.library_button)
 
-
-class RecentArtworkMenu(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        self.layout.addWidget(QLabel('Recent artworks'))
-        for i in range(5):
-            button = QPushButton()
-            button.setIcon(QIcon(f'assets/examples/recent-example-{i + 1}.png'))
-            button.setIconSize(QSize(120, 120))
-            button.setMaximumSize(200, 200)
-            self.layout.addWidget(button)
-
-        self.layout.addStretch()
+    def open_image_picker(self) -> None:
+        file = QFileDialog.getOpenFileName(self, 'Select an image', '.', 'Images (*.png *.jpg)')
+        if file:
+            if file[0] == '':
+                return
+            pixmap = QPixmap(file[0])
+            self.image_path = file[0]
+            scaled_pixmap = pixmap.scaled(self.image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+            self.image.setPixmap(scaled_pixmap)
 
 
 class MorphingButton(QPushButton):
@@ -306,9 +314,11 @@ class MorphingWorker(QObject):
         self.args = args
         self.kwargs = kwargs
 
-    def run(self):
+    def run(self, right_path, left_path):
         result = self.morphing_callback(
             *self.args, **self.kwargs,
+            src_path_1=right_path,
+            src_path_2=left_path,
             training_signal=self.training_progress,
             morphing_signal=self.morphing_progress)
 

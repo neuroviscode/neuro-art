@@ -161,12 +161,21 @@ def generate_frames(origins, targets, preds, progress_signal: pyqtSignal(int), s
     return frames
 
 
-def download_data() -> tuple:
-    source = tf.keras.utils.get_file(os.getcwd() + "/assets/examples/morphing_example_1.jpg",
-                                     "https://raw.githubusercontent.com/volotat/DiffMorph/master/images/img_3.jpg")
-    target = tf.keras.utils.get_file(os.getcwd() + "/assets/examples/morphing_example_2.jpg",
-                                     "https://raw.githubusercontent.com/volotat/DiffMorph/master/images/img_4.jpg")
-    return source, target
+def crop_different_dims_pictures(pic_a, pic_b):
+    desired_width = max(pic_a.shape[1], pic_b.shape[1])
+    desired_height = max(pic_a.shape[0], pic_b.shape[0])
+
+    image_a_resized = cv2.resize(pic_a, (desired_width, desired_height))
+    image_b_resized = cv2.resize(pic_b, (desired_width, desired_height))
+
+    # crop images if the ratios are different
+    if image_a_resized.shape != image_b_resized.shape:
+        crop_x = (image_a_resized.shape[1] - desired_width) // 2
+        crop_y = (image_a_resized.shape[0] - desired_height) // 2
+        image_a_resized = image_a_resized[crop_y:crop_y + desired_height, crop_x:crop_x + desired_width]
+        image_b_resized = image_b_resized[crop_y:crop_y + desired_height, crop_x:crop_x + desired_width]
+
+    return image_a_resized, image_b_resized
 
 
 def training(source, target, progress_signal: pyqtSignal(int)):
@@ -176,7 +185,7 @@ def training(source, target, progress_signal: pyqtSignal(int)):
     # Checks if input and destination image are of the same dimensions.
     if dom_a.shape[1] != dom_b.shape[1] or dom_a.shape[0] != dom_b.shape[0]:
         print("Input Image is not the same dimensions as Destination Image.")
-        sys.exit(1)
+        dom_a, dom_b = crop_different_dims_pictures(dom_a, dom_b)
 
     # Store original height and width
     ORIG_WIDTH = dom_a.shape[1]
@@ -197,11 +206,13 @@ def training(source, target, progress_signal: pyqtSignal(int)):
     return produce_warp_maps(origins, targets, progress_signal), origins, targets
 
 
-def morphing_handler(training_signal: pyqtSignal(int), morphing_signal: pyqtSignal(int)):
-    print('morphing_handler')
-    origins_path, targets_path = download_data()
+def morphing_handler(
+        src_path_1: str,
+        src_path_2: str,
+        training_signal: pyqtSignal(int),
+        morphing_signal: pyqtSignal(int)):
 
-    predictions, origins, targets = training(origins_path, targets_path, training_signal)
+    predictions, origins, targets = training(src_path_1, src_path_2, training_signal)
 
     steps = 50
     print("Morphing...")
