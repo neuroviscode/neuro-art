@@ -1,5 +1,8 @@
 import logging
 import os
+import random
+import requests
+import urllib
 from pathlib import Path
 
 import tensorflow as tf
@@ -7,7 +10,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog
 
-from logic.preprocessing import preprocess_image, load_img
+from logic.preprocessing import preprocess_image, load_img, load_img_from_url
 from logic.style_transfer import StyleTransfer
 
 
@@ -17,6 +20,9 @@ class StyleImageMenu(QWidget):
     num_of_results = 0
 
     STYLE_IMAGE_RESULTS = 'assets/results/style-image'
+
+    is_content_image_from_url = False
+    is_style_image_from_url = False
 
     def __init__(self):
 
@@ -76,7 +82,8 @@ class StyleImageMenu(QWidget):
                                                               button_name='upper_library_button')
         upper_stylization_buttons_wikiart_button = StyleButton(label="Random WikiArt Image",
                                                                icon_image_path='assets/icons/shuffle.png',
-                                                               button_name='upper_wikiart_button')
+                                                               button_name='upper_wikiart_button',
+                                                               callback=self.open_random_wikiart_content_image)
         upper_stylization_buttons_layout = QVBoxLayout()
         upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_open_file_button)
         upper_stylization_buttons_layout.addWidget(upper_stylization_buttons_select_button)
@@ -104,7 +111,8 @@ class StyleImageMenu(QWidget):
                                                               button_name='lower_library_button')
         lower_stylization_buttons_wikiart_button = StyleButton(label="Random WikiArt Image",
                                                                icon_image_path='assets/icons/shuffle.png',
-                                                               button_name='lower_wikiart_button')
+                                                               button_name='lower_wikiart_button',
+                                                               callback=self.open_random_wikiart_style_image)
         lower_stylization_buttons_layout = QVBoxLayout()
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_open_file_button)
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_select_button)
@@ -174,8 +182,15 @@ class StyleImageMenu(QWidget):
         StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.IMAGE) # set proper stylization models as active
         content_image_path = self.upper_stylization_image_path
         style_image_path = self.lower_stylization_image_path
-        content_image = preprocess_image(load_img(content_image_path), 384)
-        style_image = preprocess_image(load_img(style_image_path), 256)
+        if self.is_content_image_from_url:
+            content_image = preprocess_image(load_img_from_url(content_image_path), 384)
+        else:
+            content_image = preprocess_image(load_img(content_image_path), 384)
+
+        if self.is_style_image_from_url:
+            style_image = preprocess_image(load_img_from_url(style_image_path), 256)
+        else:
+            style_image = preprocess_image(load_img(style_image_path), 256)
 
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
 
@@ -201,6 +216,7 @@ class StyleImageMenu(QWidget):
             scaled_pixmap = pixmap.scaled(self.upper_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
             self.upper_stylization_image.setPixmap(scaled_pixmap)
+            self.is_content_image_from_url = False
 
     def open_style_image_from_file(self) -> None:
         """Callback to open button"""
@@ -213,6 +229,47 @@ class StyleImageMenu(QWidget):
             scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
             self.lower_stylization_image.setPixmap(scaled_pixmap)
+            self.is_style_image_from_url = False
+
+    def open_random_wikiart_content_image(self) -> None:
+        """Callback to random wikiArt image button"""
+        loading_succeded = False
+        while not loading_succeded:
+            response = requests.get('https://www.wikiart.org/en/App/Painting/MostViewedPaintings')
+            response.raise_for_status()
+            random_image_url = random.choice([x['image'] for x in response.json()])
+            try:
+                data = urllib.request.urlopen(random_image_url).read()
+                loading_succeded = True
+            except:
+                continue
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.upper_stylization_image.setPixmap(scaled_pixmap)
+        self.upper_stylization_image_path = random_image_url
+        self.is_content_image_from_url = True
+
+    def open_random_wikiart_style_image(self) -> None:
+        """Callback to random wikiArt image button"""
+        loading_succeded = False
+        while not loading_succeded:
+            response = requests.get('https://www.wikiart.org/en/App/Painting/MostViewedPaintings')
+            response.raise_for_status()
+            random_image_url = random.choice([x['image'] for x in response.json()])
+            try:
+                data = urllib.request.urlopen(random_image_url).read()
+                loading_succeded = True
+            except:
+                continue
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.lower_stylization_image.setPixmap(scaled_pixmap)
+        self.lower_stylization_image_path = random_image_url
+        self.is_style_image_from_url = True
 
     @staticmethod
     def search_for_results():
