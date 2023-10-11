@@ -83,7 +83,7 @@ class MiddleContainer(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.morphing_thread = QThread()
+
         self.morphing_worker = MorphingWorker(morphing.morphing_handler)
 
         self.layout = QVBoxLayout()
@@ -179,7 +179,11 @@ class MiddleContainer(QWidget):
         self.save_button.setDisabled(True)
         self.train_button.setDisabled(True)
 
+        self.morphing_thread = QThread()
         self.morphing_worker.moveToThread(self.morphing_thread)
+
+        self.morphing_train_progress_bar.setValue(0)
+        self.morphing_morph_progress_bar.setValue(0)
 
         from main import MainWindow
         window = MainWindow.window(self)
@@ -189,8 +193,8 @@ class MiddleContainer(QWidget):
         self.morphing_thread.started.connect(lambda: self.morphing_worker.run(left_path, right_path))
         self.morphing_worker.training_progress.connect(self.update_training_progress_bar)
         self.morphing_worker.morphing_progress.connect(self.update_morphing_progress_bar)
-        self.morphing_worker.finished.connect(self.morphing_thread.quit)
         self.morphing_worker.finished.connect(self.morphing_training_finished)
+        self.morphing_worker.finished.connect(self.morphing_thread.quit)
         self.morphing_worker.finished.connect(self.morphing_thread.deleteLater)
 
         self.morphing_thread.start()
@@ -201,6 +205,8 @@ class MiddleContainer(QWidget):
         morphing_menu = window.morphing_menu
 
         morphing_menu.frames = copy.deepcopy(frames)
+
+        self.handle_slider_value_change()
 
         self.save_button.setDisabled(False)
         self.train_button.setDisabled(False)
