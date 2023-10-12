@@ -147,6 +147,7 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.setVideoOutput(self.result_video)
         self.result_media_player.positionChanged.connect(self.video_position_changed)
         self.result_media_player.durationChanged.connect(self.video_duration_changed)
+        self.result_media_player.mediaStatusChanged.connect(self.video_status_changed)
         self.result_media_player.play()  # without playing and pausing the video were not visible
         self.result_media_player.pause()
         self.result_media_player.setPosition(0)
@@ -155,13 +156,13 @@ class StyleVideoMenu(QWidget):
         self.video_position_slider = QSlider(Qt.Orientation.Horizontal)
         self.video_position_slider.setRange(0, self.upper_stylization_media_player.duration())
         self.video_position_slider.sliderMoved.connect(self.set_video_position)
-        play_button = QPushButton()
-        play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
-        play_button.clicked.connect(self.play_button_click)
+        self.play_button = QPushButton()
+        self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.play_button.clicked.connect(self.play_button_click)
         result_video_container_layout.addWidget(self.result_video)
         result_video_container_layout.addWidget(self.stylization_progress_bar)
         result_video_container_layout.addWidget(self.video_position_slider)
-        result_video_container_layout.addWidget(play_button)
+        result_video_container_layout.addWidget(self.play_button)
         result_video_container.setLayout(result_video_container_layout)
 
         # result_controls_container
@@ -199,9 +200,11 @@ class StyleVideoMenu(QWidget):
         if self.result_media_player.isPlaying():
             self.result_media_player.pause()
             self.upper_stylization_media_player.pause()
+            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         else:
             self.result_media_player.play()
             self.upper_stylization_media_player.play()
+            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
 
     def set_video_position(self, position: int) -> None:
         """Callback to moving slider
@@ -218,6 +221,12 @@ class StyleVideoMenu(QWidget):
         """Callback to video duration changed in QMediaPlayer
         :param duration: total playback time in milliseconds"""
         self.video_position_slider.setRange(0, duration)
+
+    def video_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
+        """Callback to video status changed in QMediaPlayer to check if it finished
+                :param status: status of media"""
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self.reset_videos_state()
 
     def update_progress_bar(self, value: int) -> None:
         """Callback to stylization progress signal
@@ -244,6 +253,7 @@ class StyleVideoMenu(QWidget):
         self.result_media_player.setPosition(0)
         self.upper_stylization_media_player.setPosition(0)
         self.video_position_slider.setValue(0)
+        self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
 
     def open_video_from_file(self) -> None:
         """Callback to open button"""
