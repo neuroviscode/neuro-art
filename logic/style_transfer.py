@@ -124,17 +124,16 @@ class StyleTransfer:
         return result_image
 
     @staticmethod
-    def stylize_video(content_video_path: str, style_image_path: str, content_blending_ratio: float,
+    def stylize_video(content_video_path: str, style_image, content_blending_ratio: float,
                       progress_signal: pyqtSignal(int)):
         """Use active models to stylize a video
         :param content_video_path: path to video
-        :param style_image_path: path to style image
+        :param style_image: image as a tensor of shape (batch_size=1, width=256, height=256, rgb=3)
         :param content_blending_ratio: how much style of the content video is considered (between 0.0 and 1.0)
         :param progress_signal: signal to emit every frame
         :return: path to result video
         """
         result_video_path = StyleTransfer.find_next_result_video_path()
-        style_image = preprocess_image(load_img(style_image_path), 256)
         video_capture_object = cv.VideoCapture(content_video_path)
 
         frame_size = (384, 384)
