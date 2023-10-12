@@ -83,9 +83,6 @@ class MiddleContainer(QWidget):
     def __init__(self):
         super().__init__()
 
-
-        self.morphing_worker = MorphingWorker(morphing.morphing_handler)
-
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -179,23 +176,25 @@ class MiddleContainer(QWidget):
         self.save_button.setDisabled(True)
         self.train_button.setDisabled(True)
 
-        self.morphing_thread = QThread()
-        self.morphing_worker.moveToThread(self.morphing_thread)
-
-        self.morphing_train_progress_bar.setValue(0)
-        self.morphing_morph_progress_bar.setValue(0)
-
         from main import MainWindow
         window = MainWindow.window(self)
         left_path = window.morphing_menu.left_container.image_path
         right_path = window.morphing_menu.right_container.image_path
 
-        self.morphing_thread.started.connect(lambda: self.morphing_worker.run(left_path, right_path))
-        self.morphing_worker.training_progress.connect(self.update_training_progress_bar)
-        self.morphing_worker.morphing_progress.connect(self.update_morphing_progress_bar)
-        self.morphing_worker.finished.connect(self.morphing_training_finished)
+        self.morphing_thread = QThread()
+        self.morphing_worker = MorphingWorker(morphing.morphing_handler, left_path, right_path)
+        self.morphing_worker.moveToThread(self.morphing_thread)
+
+        self.morphing_train_progress_bar.setValue(0)
+        self.morphing_morph_progress_bar.setValue(0)
+
+        self.morphing_thread.started.connect(self.morphing_worker.run)
         self.morphing_worker.finished.connect(self.morphing_thread.quit)
         self.morphing_worker.finished.connect(self.morphing_thread.deleteLater)
+        self.morphing_worker.finished.connect(self.morphing_training_finished)
+
+        self.morphing_worker.training_progress.connect(self.update_training_progress_bar)
+        self.morphing_worker.morphing_progress.connect(self.update_morphing_progress_bar)
 
         self.morphing_thread.start()
 
@@ -314,17 +313,19 @@ class MorphingWorker(QObject):
     training_progress = pyqtSignal(int)
     morphing_progress = pyqtSignal(int)
 
-    def __init__(self, morphing_callback, *args, **kwargs):
+    def __init__(self, morphing_callback, right_path, left_path, *args, **kwargs):
         super().__init__()
         self.morphing_callback = morphing_callback
         self.args = args
         self.kwargs = kwargs
+        self.right_path = right_path
+        self.left_path = left_path
 
-    def run(self, right_path, left_path):
+    def run(self):
         result = self.morphing_callback(
             *self.args, **self.kwargs,
-            src_path_1=right_path,
-            src_path_2=left_path,
+            src_path_1=self.right_path,
+            src_path_2=self.left_path,
             training_signal=self.training_progress,
             morphing_signal=self.morphing_progress)
 
