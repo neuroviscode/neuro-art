@@ -1,3 +1,6 @@
+import random
+import urllib
+import requests
 from PyQt6.QtCore import Qt, QUrl, QObject, pyqtSignal, QThread
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtMultimedia import QMediaPlayer
@@ -5,11 +8,15 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
     QStyle, QProgressBar
 
+from logic.preprocessing import preprocess_image, load_img_from_url, load_img
 from logic.style_transfer import StyleTransfer
 
 
 class StyleVideoMenu(QWidget):
     """Class defining GUI for video style transfer module"""
+
+    is_style_image_from_url = False
+
     def __init__(self):
         super().__init__()
 
@@ -89,7 +96,8 @@ class StyleVideoMenu(QWidget):
                                                               button_name='lower_library_button')
         lower_stylization_buttons_wikiart_button = StyleButton(label='Random WikiArt Image',
                                                                icon_image_path='assets/icons/shuffle.png',
-                                                               button_name='lower_wikiart_button')
+                                                               button_name='lower_wikiart_button',
+                                                               callback=self.open_random_wikiart_style_image)
         lower_stylization_buttons_layout = QVBoxLayout()
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_open_file_button)
         lower_stylization_buttons_layout.addWidget(lower_stylization_buttons_select_button)
@@ -183,8 +191,13 @@ class StyleVideoMenu(QWidget):
         content_video_path = self.upper_stylization_video_path
         content_blending_ratio = (100 - self.stylization_slider.value()) / 100  # define content blending ratio between [0..1].
 
+        if self.is_style_image_from_url:
+            style_image = preprocess_image(load_img_from_url(style_image_path), 256)
+        else:
+            style_image = preprocess_image(load_img(style_image_path), 256)
+
         self.stylization_thread = QThread()
-        self.stylization_worker = StylizationWorker(StyleTransfer.stylize_video, content_video_path, style_image_path,
+        self.stylization_worker = StylizationWorker(StyleTransfer.stylize_video, content_video_path, style_image,
                                                     content_blending_ratio)
         self.stylization_worker.moveToThread(self.stylization_thread)
         self.stylization_thread.started.connect(self.stylization_worker.run)
@@ -279,6 +292,27 @@ class StyleVideoMenu(QWidget):
             scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
             self.lower_stylization_image.setPixmap(scaled_pixmap)
+            self.is_style_image_from_url = False
+
+    def open_random_wikiart_style_image(self) -> None:
+        """Callback to random wikiArt image button"""
+        loading_succeded = False
+        while not loading_succeded:
+            response = requests.get('https://www.wikiart.org/en/App/Painting/MostViewedPaintings')
+            response.raise_for_status()
+            random_image_url = random.choice([x['image'] for x in response.json()])
+            try:
+                data = urllib.request.urlopen(random_image_url).read()
+                loading_succeded = True
+            except:
+                continue
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        scaled_pixmap = pixmap.scaled(self.lower_stylization_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.lower_stylization_image.setPixmap(scaled_pixmap)
+        self.lower_stylization_image_path = random_image_url
+        self.is_style_image_from_url = True
 
 
 class StyleButton(QPushButton):
