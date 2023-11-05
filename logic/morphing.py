@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 ORIG_WIDTH = 0
 ORIG_HEIGHT = 0
-TRAIN_EPOCHS = 100
 
 im_sz = 1024
 mp_sz = 96
@@ -24,29 +23,23 @@ add_first = False
 @tf.function
 def warp(origins, targets, preds_org, preds_trg):
     if add_first:
-        res_targets = tfa.image.dense_image_warp((origins + preds_org[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1,
-                                                                                                                  1 + preds_org[
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      0:3] * mult_scale),
-                                                 preds_org[:, :, :, 6:8] * im_sz * warp_scale)
-        res_origins = tfa.image.dense_image_warp((targets + preds_trg[:, :, :, 3:6] * 2 * add_scale) * tf.maximum(0.1,
-                                                                                                                  1 + preds_trg[
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      :,
-                                                                                                                      0:3] * mult_scale),
-                                                 preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
-    else:
         res_targets = tfa.image.dense_image_warp(
-            origins * tf.maximum(0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale) + preds_org[:, :, :,
-                                                                                  3:6] * 2 * add_scale,
+            (origins + preds_org[:, :, :, 3:6] * 2 * add_scale)
+            * tf.maximum(0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale),
             preds_org[:, :, :, 6:8] * im_sz * warp_scale)
         res_origins = tfa.image.dense_image_warp(
-            targets * tf.maximum(0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale) + preds_trg[:, :, :,
-                                                                                  3:6] * 2 * add_scale,
+            (targets + preds_trg[:, :, :, 3:6] * 2 * add_scale)
+            * tf.maximum(0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale),
             preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
+    else:
+        res_targets = tfa.image.dense_image_warp(
+            origins * tf.maximum(
+                0.1, 1 + preds_org[:, :, :, 0:3] * mult_scale) + preds_org[:, :, :, 3:6] * 2 * add_scale,
+                preds_org[:, :, :, 6:8] * im_sz * warp_scale)
+        res_origins = tfa.image.dense_image_warp(
+            targets * tf.maximum(
+                0.1, 1 + preds_trg[:, :, :, 0:3] * mult_scale) + preds_trg[:, :, :, 3:6] * 2 * add_scale,
+                preds_trg[:, :, :, 6:8] * im_sz * warp_scale)
 
     return res_targets, res_origins
 
@@ -112,17 +105,17 @@ def produce_warp_maps(origins, targets, progress_signal: pyqtSignal(int)):
     epoch = 0
     template = 'Epoch {}, Loss: {}'
 
-    t = tqdm(range(TRAIN_EPOCHS), desc=template.format(epoch, train_loss.result()))
+    t = tqdm(range(int(os.getenv("TRAIN_EPOCHS"))), desc=template.format(epoch, train_loss.result()))
 
     for i in t:
         epoch = i + 1
 
-        t.set_description(template.format(epoch, train_loss.result()))
-        t.refresh()
+        # t.set_description(template.format(epoch, train_loss.result()))
+        # t.refresh()
 
         train_step(maps, origins, targets)
 
-        progress_signal.emit(int(i * 100 / TRAIN_EPOCHS))
+        progress_signal.emit(int(i * 100 / int(os.getenv("TRAIN_EPOCHS"))))
 
         if (epoch < 100 and epoch % 10 == 0) or \
                 (epoch < 1000 and epoch % 100 == 0) or \
@@ -179,8 +172,11 @@ def crop_different_dims_pictures(pic_a, pic_b):
 
 
 def training(source, target, progress_signal: pyqtSignal(int)):
-    dom_a = cv2.imread(source, cv2.IMREAD_COLOR)
-    dom_b = cv2.imread(target, cv2.IMREAD_COLOR)
+    dom_a = cv2.imread(os.path.relpath(source), cv2.IMREAD_COLOR)
+    dom_b = cv2.imread(os.path.relpath(target), cv2.IMREAD_COLOR)
+
+    if dom_a is None or dom_b is None:
+        print(f"Couldn't load images: {dom_a}, {dom_b}")
 
     # Checks if input and destination image are of the same dimensions.
     if dom_a.shape[1] != dom_b.shape[1] or dom_a.shape[0] != dom_b.shape[0]:
@@ -188,9 +184,6 @@ def training(source, target, progress_signal: pyqtSignal(int)):
         dom_a, dom_b = crop_different_dims_pictures(dom_a, dom_b)
 
     # Store original height and width
-    ORIG_WIDTH = dom_a.shape[1]
-    ORIG_HEIGHT = dom_a.shape[0]
-
     dom_a = cv2.cvtColor(dom_a, cv2.COLOR_BGR2RGB)
     dom_a = cv2.resize(dom_a, (im_sz, im_sz), interpolation=cv2.INTER_AREA)
     dom_a = dom_a / 127.5 - 1
@@ -213,13 +206,8 @@ def morphing_handler(
         morphing_signal: pyqtSignal(int)):
 
     predictions, origins, targets = training(src_path_1, src_path_2, training_signal)
+    steps = int(os.getenv("MORPHING_STEPS"))
 
-    steps = 50
-    print("Morphing...")
-    frames = generate_frames(origins, targets, predictions, morphing_signal, steps=steps)  # generate frames between source and target images
+    frames = generate_frames(origins, targets, predictions, morphing_signal, steps)  # generate frames between source and target images
 
     return frames
-
-
-if __name__ == "__main__":
-    morphing_handler()

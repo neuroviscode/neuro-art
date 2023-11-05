@@ -3,7 +3,6 @@ from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QPushButton, QStackedLayout
 
 from logic.style_transfer import StyleTransfer
-from widgets.generate import GenerateMenu
 from widgets.home import HomeMenu
 from widgets.library import LibraryMenu
 from widgets.morphing import MorphingMenu
@@ -29,7 +28,6 @@ class MainWindow(QMainWindow):
         self.style_image_menu = StyleImageMenu()
         self.style_video_menu = StyleVideoMenu()
         self.morphing_menu = MorphingMenu()
-        self.generate_menu = GenerateMenu()
         self.settings_menu = SettingsMenu()
         self.library_menu = LibraryMenu()
 
@@ -46,17 +44,14 @@ class MainWindow(QMainWindow):
         self.stacked_layout.addWidget(self.style_image_menu)
         self.stacked_layout.addWidget(self.style_video_menu)
         self.stacked_layout.addWidget(self.home_menu)
-        self.stacked_layout.addWidget(self.generate_menu)
         self.stacked_layout.addWidget(self.library_menu)
         self.stacked_layout.addWidget(self.settings_menu)
         self.stacked_layout.addWidget(self.morphing_menu)
 
-        self.stacked_layout.setCurrentWidget(self.style_image_menu)
+        self.stacked_layout.setCurrentWidget(self.home_menu)
 
         # load all models
         StyleTransfer.load_models()
-
-        # self.central_widget.setStyleSheet('border: 1px solid red')  # TODO testing purposes, remove later
 
     def change_current_widget(self, widget: QWidget):
         self.stacked_layout.setCurrentWidget(widget)
@@ -69,15 +64,17 @@ class LeftMenu(QWidget):
         self.left_menu_layout = QVBoxLayout()
         self.setLayout(self.left_menu_layout)
 
-        self.left_menu_layout.addWidget(MenuButton("Home", "assets/icons/home.png", button_name='btn_leftmenu_home'))
+        self.left_menu_layout.addWidget(MenuButton("Home", "assets/icons/home.png",
+                                                   button_name='btn_leftmenu_home'))
         self.left_menu_layout.addWidget(
-            MenuButton("Generate", "assets/icons/bulb.png", button_name='btn_leftmenu_generate'))
+            MenuButton("Style Image", "assets/icons/shuffle.png",
+                       button_name='btn_leftmenu_style_image'))
         self.left_menu_layout.addWidget(
-            MenuButton("Style Image", "assets/icons/shuffle.png", button_name='btn_leftmenu_style_image'))
+            MenuButton("Style Video", "assets/icons/shuffle.png",
+                       button_name='btn_leftmenu_style_video'))
         self.left_menu_layout.addWidget(
-            MenuButton("Style Video", "assets/icons/shuffle.png", button_name='btn_leftmenu_style_video'))
-        self.left_menu_layout.addWidget(
-            MenuButton("Morphing", "assets/icons/color-filter.png", button_name='btn_leftmenu_morphing'))
+            MenuButton("Morphing", "assets/icons/color-filter.png",
+                       button_name='btn_leftmenu_morphing'))
         self.left_menu_layout.addWidget(
             MenuButton("Library", "assets/icons/book.png", button_name='btn_leftmenu_library'))
         self.left_menu_layout.addWidget(
@@ -111,9 +108,6 @@ class MenuButton(QPushButton):
 
         if button_name == 'btn_leftmenu_style_video':
             window.change_current_widget(window.style_video_menu)
-
-        if button_name == 'btn_leftmenu_generate':
-            window.change_current_widget(window.generate_menu)
 
         if button_name == 'btn_leftmenu_morphing':
             window.change_current_widget(window.morphing_menu)
