@@ -12,7 +12,8 @@ def sync():
 app = QApplication(sys.argv)
 os.environ["theme"] = "light"
 os.environ["TRAIN_EPOCHS"] = "100"
-os.environ["MORPHING_STEPS"] = "50"
+os.environ["INTERPOLATION"] = "TRUE"
+os.environ["INTERPOLATION_STEP"] = "3"
 window = MainWindow()
 window.show()
 app.exec()

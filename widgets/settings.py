@@ -2,7 +2,7 @@ import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon, QIntValidator
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QLineEdit
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QLineEdit, QCheckBox
 import qdarktheme
 
 
@@ -50,25 +50,31 @@ class SettingsMenu(QWidget):
         self.epochs_form_layout.addWidget(QLabel("Number of morphing training epochs:"))
         self.epochs_form_layout.addWidget(self.epochs_val)
 
-        self.steps_form_layout = QHBoxLayout()
-        self.steps_form = QWidget()
-        self.steps_form.setLayout(self.steps_form_layout)
-        self.steps_form.setMaximumWidth(300)
-        self.steps_form_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.steps_val = QLineEdit()
-        self.steps_val.setValidator(QIntValidator())
-        self.steps_val.setMaxLength(2)
-        self.steps_val.setText(os.getenv("MORPHING_STEPS"))
-        self.steps_val.textChanged.connect(self.change_steps)
+        self.interpolation_form_layout = QHBoxLayout()
+        self.interpolation_form = QWidget()
+        self.interpolation_form.setLayout(self.interpolation_form_layout)
+        self.interpolation_form.setMaximumWidth(300)
+        self.interpolation_form_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.interpolation_checkbox = QCheckBox()
+        self.interpolation_checkbox.setChecked(False)
+        self.interpolation_checkbox.stateChanged.connect(self.set_interpolation)
+        self.interpolation_val = QLineEdit()
+        self.interpolation_val.setValidator(QIntValidator())
+        self.interpolation_val.setMaxLength(3)
+        self.interpolation_val.setText(os.getenv("INTERPOLATION_STEP"))
+        self.interpolation_val.textChanged.connect(self.change_interpolation)
+        self.interpolation_val.setDisabled(True)
 
-        self.steps_form_layout.addWidget(QLabel("Number of morphing frames:"))
-        self.steps_form_layout.addWidget(self.steps_val)
+        self.interpolation_form_layout.addWidget(QLabel("Video interpolation:"))
+        self.interpolation_form_layout.addWidget(self.interpolation_checkbox)
+        self.interpolation_form_layout.addWidget(QLabel("step:"))
+        self.interpolation_form_layout.addWidget(self.interpolation_val)
 
 
         self.settings_layout.addWidget(self.settings_header)
         self.settings_layout.addWidget(QLabel())
-        self.settings_layout.addWidget(self.steps_form)
         self.settings_layout.addWidget(self.epochs_form)
+        self.settings_layout.addWidget(self.interpolation_form)
         self.settings_layout.addWidget(self.themes)
         self.set_light_theme()
 
@@ -87,11 +93,15 @@ class SettingsMenu(QWidget):
         finally:
             self.epochs_val.setText(os.getenv("TRAIN_EPOCHS"))
 
-    def change_steps(self, value):
+    def set_interpolation(self):
+        self.interpolation_val.setDisabled(self.interpolation_val.isEnabled())
+        os.environ["INTERPOLATION"] = "TRUE" if self.interpolation_val.isEnabled() else "FALSE"
+
+    def change_interpolation(self, value):
         try:
-            x = max(int(value), 3)
-            os.environ["MORPHING_STEPS"] = str(x)
+            x = max(int(value), 1)
+            os.environ["INTERPOLATION_STEP"] = str(x)
         except Exception:
             pass
         finally:
-            self.steps_val.setText(os.getenv("MORPHING_STEPS"))
+            self.interpolation_val.setText(os.getenv("INTERPOLATION_STEP"))

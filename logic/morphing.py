@@ -102,17 +102,8 @@ def produce_warp_maps(origins, targets, progress_signal: pyqtSignal(int)):
     maps = create_grid(im_sz)
     maps = np.concatenate((maps, origins * 0.1, targets * 0.1), axis=-1).astype(np.float32)
 
-    epoch = 0
-    template = 'Epoch {}, Loss: {}'
-
-    t = tqdm(range(int(os.getenv("TRAIN_EPOCHS"))), desc=template.format(epoch, train_loss.result()))
-
-    for i in t:
+    for i in range(int(os.getenv("TRAIN_EPOCHS"))):
         epoch = i + 1
-
-        # t.set_description(template.format(epoch, train_loss.result()))
-        # t.refresh()
-
         train_step(maps, origins, targets)
 
         progress_signal.emit(int(i * 100 / int(os.getenv("TRAIN_EPOCHS"))))
@@ -128,7 +119,7 @@ def produce_warp_maps(origins, targets, progress_signal: pyqtSignal(int)):
     return preds
 
 
-def generate_frames(origins, targets, preds, progress_signal: pyqtSignal(int), steps=100):
+def generate_frames(origins, targets, preds, progress_signal: pyqtSignal(int), steps):
     # apply maps
     org_strength = tf.reshape(tf.range(steps, dtype=tf.float32), [steps, 1, 1, 1]) / (steps - 1)
     trg_strength = tf.reverse(org_strength, axis=[0])
@@ -206,7 +197,7 @@ def morphing_handler(
         morphing_signal: pyqtSignal(int)):
 
     predictions, origins, targets = training(src_path_1, src_path_2, training_signal)
-    steps = int(os.getenv("MORPHING_STEPS"))
+    steps = 50
 
     frames = generate_frames(origins, targets, predictions, morphing_signal, steps)  # generate frames between source and target images
 
