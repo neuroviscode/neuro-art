@@ -1,5 +1,7 @@
 .idea/
 __pycache__/
+venv/**
+.venv/**
 assets/examples/result*
 release/
 assets/results/result*
