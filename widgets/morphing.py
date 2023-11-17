@@ -2,9 +2,7 @@ import copy
 import os
 
 import cv2
-import numpy as np
-from PIL.Image import Image
-from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QProgressBar, QFileDialog
 
@@ -47,7 +45,7 @@ class LeftContainer(QWidget):
         self.layout.addWidget(self.image_container)
 
         self.image = QLabel()
-        self.image_path = os.getcwd() + '/assets/examples/morphing-example-left.jpg'
+        self.image_path = os.path.abspath('assets/examples/morphing_example_1.jpg')
         pixmap = QPixmap(self.image_path)
         scaled_pixmap = pixmap.scaled(self.image.size() * 0.6, Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
@@ -62,7 +60,8 @@ class LeftContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.layout.addWidget(self.button_container)
 
-        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png', callback=self.open_image_picker)
+        self.left_open_button = MorphingButton('Open file', 'assets/icons/document.png',
+                                               callback=self.open_image_picker)
         self.left_library_button = MorphingButton('Select from library', 'assets/icons/bookmark.png')
         self.button_container_layout.addWidget(self.left_open_button)
         self.button_container_layout.addWidget(self.left_library_button)
@@ -140,17 +139,15 @@ class MiddleContainer(QWidget):
         self.button_container.setLayout(self.button_container_layout)
         self.button_container_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.save_button = MorphingButton('Save to library', 'assets/icons/bookmark.png')
-        self.button_container_layout.addWidget(self.save_button)
-
         self.train_button = MorphingButton(
             'Train model',
             'assets/icons/refresh.png',
             callback=self.start_morphing_training
         )
-
         self.button_container_layout.addWidget(self.train_button)
         self.layout.addWidget(self.button_container)
+        self.save_button = MorphingButton('Save to library', 'assets/icons/bookmark.png')
+        self.button_container_layout.addWidget(self.save_button)
         self.slider.setDisabled(True)
 
     def handle_slider_value_change(self):
@@ -258,7 +255,7 @@ class RightContainer(QWidget):
         self.layout.addWidget(self.image_container)
 
         self.image = QLabel()
-        self.image_path = os.getcwd() + '/assets/examples/morphing-example-right.jpg'
+        self.image_path = os.path.abspath('assets/examples/morphing_example_2.jpg')
         pixmap = QPixmap(self.image_path)
         scaled_pixmap = pixmap.scaled(self.image.size() * 0.6, Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)

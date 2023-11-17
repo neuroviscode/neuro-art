@@ -1,4 +1,5 @@
 import os
+import time
 
 import tensorflow as tf
 import cv2 as cv
@@ -131,6 +132,7 @@ class StyleTransfer:
         :param style_image: image as a tensor of shape (batch_size=1, width=256, height=256, rgb=3)
         :param content_blending_ratio: how much style of the content video is considered (between 0.0 and 1.0)
         :param progress_signal: signal to emit every frame
+        :param interpolate: if to interpolate frames
         :return: path to result video
         """
         result_video_path = StyleTransfer.find_next_result_video_path()
@@ -142,21 +144,55 @@ class StyleTransfer:
         out = cv.VideoWriter(result_video_path, cv.VideoWriter_fourcc(*'DIVX'), frame_rate, frame_size)
 
         count = 0
-        while True:
-            success, image = video_capture_object.read()
-            if not success:
-                break
+        if os.getenv("INTERPOLATION") == "TRUE":
+            prev_frame = None
+            INTERPOLATION_STEP = int(os.getenv("INTERPOLATION_STEP"))
+            while True:
+                success, image = video_capture_object.read()
+                if not success:
+                    break
 
-            content_image_frame = preprocess_image(convert_opencv_image_to_tensor(image), 384)
+                if count % INTERPOLATION_STEP == 0:
+                    content_image_frame = preprocess_image(convert_opencv_image_to_tensor(image), 384)
 
-            result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
-            result_image_frame = cv.normalize(result_image_frame, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
-            result_image_frame = cv.cvtColor(result_image_frame, cv.COLOR_RGB2BGR)
-            out.write(result_image_frame)
+                    result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image,
+                                                                     content_blending_ratio)
+                    result_image_frame = cv.normalize(result_image_frame, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
+                    result_image_frame = cv.cvtColor(result_image_frame, cv.COLOR_RGB2BGR)
 
-            # print frame counter for debugging purposses
-            count += 1
-            progress_signal.emit(int(count*100/frame_counter))
+                    if count > 0:
+                        for i in range(1, INTERPOLATION_STEP):
+                            interpolated_frame = cv.addWeighted(result_image_frame, i / INTERPOLATION_STEP,
+                                                                prev_frame, 1 - i / INTERPOLATION_STEP, 1)
+                            out.write(interpolated_frame)
+
+                    out.write(result_image_frame)
+                    prev_frame = result_image_frame
+
+                count += 1
+                progress_signal.emit(int(count * 100 / frame_counter))
+
+            if count % INTERPOLATION_STEP > 1:
+                for i in range(1, count % INTERPOLATION_STEP):
+                    interpolated_frame = cv.addWeighted(result_image_frame, i / (count % INTERPOLATION_STEP),
+                                                        prev_frame, 1 - i / (count % INTERPOLATION_STEP), 1)
+                    out.write(interpolated_frame)
+                out.write(result_image_frame)
+        else:
+            while True:
+                success, image = video_capture_object.read()
+                if not success:
+                    break
+
+                content_image_frame = preprocess_image(convert_opencv_image_to_tensor(image), 384)
+
+                result_image_frame = StyleTransfer.stylize_image(content_image_frame, style_image, content_blending_ratio)
+                result_image_frame = cv.normalize(result_image_frame, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
+                result_image_frame = cv.cvtColor(result_image_frame, cv.COLOR_RGB2BGR)
+                out.write(result_image_frame)
+
+                count += 1
+                progress_signal.emit(int(count*100/frame_counter))
 
         out.release()
 
