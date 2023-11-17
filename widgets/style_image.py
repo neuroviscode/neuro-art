@@ -1,6 +1,8 @@
 import logging
 import os
 import random
+from io import BytesIO
+
 import requests
 import urllib
 from pathlib import Path
@@ -8,10 +10,13 @@ from pathlib import Path
 import tensorflow as tf
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QGridLayout, QSlider, QFileDialog, \
+    QCheckBox
+from PIL import Image
 
 from logic.preprocessing import preprocess_image, load_img, load_img_from_url
 from logic.style_transfer import StyleTransfer
+from logic.style_transfer_vae import StyleTransferVAE
 
 
 class StyleImageMenu(QWidget):
@@ -29,6 +34,9 @@ class StyleImageMenu(QWidget):
         super().__init__()
 
         StyleImageMenu.search_for_results()
+
+        self.style_transformer_vae = StyleTransferVAE()
+        self.use_vae_style_transformer = False
 
         layout = QHBoxLayout()
         self.setLayout(layout)
@@ -155,6 +163,17 @@ class StyleImageMenu(QWidget):
         self.stylization_slider.setSingleStep(1)
         stylization_controls_container_layout.addWidget(self.stylization_slider)
 
+        self.stylization_switch_container = QWidget()
+        self.stylization_switch_container_layout = QHBoxLayout()
+        self.stylization_model_switch = QCheckBox()
+        self.stylization_model_switch.setChecked(False)
+        self.stylization_model_switch.stateChanged.connect(self.toggle_stylization_model)
+        self.stylization_switch_text = QLabel('Korzystaj z modelu VAE do stylizacji')
+        self.stylization_switch_container_layout.addWidget(self.stylization_switch_text)
+        self.stylization_switch_container_layout.addWidget(self.stylization_model_switch)
+        self.stylization_switch_container.setLayout(self.stylization_switch_container_layout)
+        stylization_controls_container_layout.addWidget(self.stylization_switch_container)
+
         stylize_button = QPushButton('Stylize')
         icon = QIcon(QPixmap('assets/icons/shuffle.png'))
         stylize_button.setIcon(icon)
@@ -177,11 +196,29 @@ class StyleImageMenu(QWidget):
         result_controls_layout.setRowStretch(1, 1)
         result_controls_container.setLayout(result_controls_layout)
 
+    def toggle_stylization_model(self, state):
+        self.use_vae_style_transformer = state
+
     def stylize_button_click(self):
         """Callback to stylize button"""
-        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.IMAGE) # set proper stylization models as active
+        StyleTransfer.set_mode(StyleTransfer.StyleTransferMode.IMAGE)  # set proper stylization models as active
         content_image_path = self.upper_stylization_image_path
         style_image_path = self.lower_stylization_image_path
+
+        if self.use_vae_style_transformer:
+            self.stylize_vae_algorithm(content_image_path, style_image_path)
+        else:
+            self.stylize_classic_algorithm(content_image_path, style_image_path)
+
+        pixmap = QPixmap(self.result_image_path)
+        scaled_pixmap = pixmap.scaled(self.result_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        self.result_image.setPixmap(scaled_pixmap)
+
+        StyleImageMenu.num_of_results += 1
+        self.right_menu.add_recent_artwork(self.result_image_path)
+
+    def stylize_classic_algorithm(self, content_image_path: str, style_image_path: str):
         if self.is_content_image_from_url:
             content_image = preprocess_image(load_img_from_url(content_image_path), 384)
         else:
@@ -197,13 +234,27 @@ class StyleImageMenu(QWidget):
         result_image = StyleTransfer.stylize_image(content_image, style_image, content_blending_ratio)
         self.result_image_path = f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{StyleImageMenu.num_of_results}.png'
         tf.keras.utils.save_img(self.result_image_path, result_image)
-        pixmap = QPixmap(self.result_image_path)
-        scaled_pixmap = pixmap.scaled(self.result_image.size(), Qt.AspectRatioMode.KeepAspectRatio,
-                                      Qt.TransformationMode.SmoothTransformation)
-        self.result_image.setPixmap(scaled_pixmap)
 
-        StyleImageMenu.num_of_results += 1
-        self.right_menu.add_recent_artwork(self.result_image_path)
+    def stylize_vae_algorithm(self, content_image_path: str, style_image_path: str):
+        if self.is_content_image_from_url:
+            response = requests.get(content_image_path)
+            response.raise_for_status()
+            content_image = Image.open(BytesIO(response.content))
+        else:
+            content_image = Image.open(content_image_path).convert('RGB')
+
+        if self.is_style_image_from_url:
+            response = requests.get(style_image_path)
+            response.raise_for_status()
+            style_image = Image.open(BytesIO(response.content))
+        else:
+            style_image = Image.open(style_image_path).convert('RGB')
+
+        result_image = self.style_transformer_vae.run_style_transfer(content_image, style_image)
+
+        self.result_image_path = f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{StyleImageMenu.num_of_results}.png'
+
+        result_image.save(self.result_image_path)
 
     def open_content_image_from_file(self) -> None:
         """Callback to open button"""
