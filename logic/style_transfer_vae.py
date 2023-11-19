@@ -24,7 +24,10 @@ class StyleTransferVAE:
 
         self.encoder.load_state_dict(torch.load(self.encoder_dir))
         self.decoder.load_state_dict(torch.load(self.decoder_dir))
-        self.transform_module.load_state_dict(torch.load(self.transform_module_dir))
+                if torch.cuda.is_available():
+            self.transform_module.load_state_dict(torch.load(self.transform_module_dir))
+        else:
+            self.transform_module.load_state_dict(torch.load(self.transform_module_dir, map_location=torch.device('cpu')))
 
         # load models into GPU tensors and set their mode to evaluation
         self.encoder.to(self.device).eval()
