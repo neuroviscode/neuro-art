@@ -562,7 +562,7 @@ class TransformModule(nn.Module):
         sMean = sMean.unsqueeze(3)
         sMeanC = sMean.expand_as(cF)
         sMeanS = sMean.expand_as(sF)
-        sF = sF - sMeanS * 2.9
+        sF = sF - sMeanS
 
         compress_content = self.compress(cF)
         b, c, h, w = compress_content.size()
