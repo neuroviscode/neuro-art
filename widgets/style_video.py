@@ -1,5 +1,4 @@
 import random
-import urllib
 import requests
 from PyQt6.QtCore import Qt, QUrl, QObject, pyqtSignal, QThread
 from PyQt6.QtGui import QPixmap, QIcon
@@ -302,7 +301,7 @@ class StyleVideoMenu(QWidget):
             response.raise_for_status()
             random_image_url = random.choice([x['image'] for x in response.json()])
             try:
-                data = urllib.request.urlopen(random_image_url).read()
+                data = requests.get(random_image_url).content
                 loading_succeded = True
             except:
                 continue

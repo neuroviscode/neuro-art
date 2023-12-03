@@ -4,7 +4,6 @@ import random
 from io import BytesIO
 
 import requests
-import urllib
 from pathlib import Path
 
 import tensorflow as tf
