@@ -151,7 +151,7 @@ class MiddleContainer(QWidget):
         self.slider.setDisabled(True)
 
     def handle_slider_value_change(self):
-        from main import MainWindow
+        from widgets.main_window import MainWindow
         window = MainWindow.window(self)
 
         morphing_menu = window.morphing_menu
@@ -173,7 +173,7 @@ class MiddleContainer(QWidget):
         self.save_button.setDisabled(True)
         self.train_button.setDisabled(True)
 
-        from main import MainWindow
+        from widgets.main_window import MainWindow
         window = MainWindow.window(self)
         left_path = window.morphing_menu.left_container.image_path
         right_path = window.morphing_menu.right_container.image_path
@@ -196,7 +196,7 @@ class MiddleContainer(QWidget):
         self.morphing_thread.start()
 
     def morphing_training_finished(self, frames: list):
-        from main import MainWindow
+        from widgets.main_window import MainWindow
         window = MainWindow.window(self)
         morphing_menu = window.morphing_menu
 

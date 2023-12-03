@@ -14,7 +14,7 @@ class HomeMenu(QWidget):
         self.setLayout(self.home_layout)
 
         self.logo = QLabel()
-        pixmap = QPixmap(os.path.abspath('assets/icon.png'))
+        pixmap = QPixmap(os.path.abspath('assets/icons/icon.png'))
         scaled_pixmap = pixmap.scaled(self.logo.size() * 0.8, Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
         self.logo.setPixmap(scaled_pixmap)
