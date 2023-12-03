@@ -4,7 +4,6 @@ import random
 from io import BytesIO
 
 import requests
-import urllib
 from pathlib import Path
 
 import tensorflow as tf
@@ -290,7 +289,7 @@ class StyleImageMenu(QWidget):
             response.raise_for_status()
             random_image_url = random.choice([x['image'] for x in response.json()])
             try:
-                data = urllib.request.urlopen(random_image_url).read()
+                data = requests.get(random_image_url).content
                 loading_succeded = True
             except:
                 continue
@@ -310,7 +309,7 @@ class StyleImageMenu(QWidget):
             response.raise_for_status()
             random_image_url = random.choice([x['image'] for x in response.json()])
             try:
-                data = urllib.request.urlopen(random_image_url).read()
+                data = requests.get(random_image_url).content
                 loading_succeded = True
             except:
                 continue
@@ -352,6 +351,7 @@ class StyleImageMenu(QWidget):
 
 class RightMenu(QWidget):
     """Class defining GUI for right menu with recent artworks"""
+
     def __init__(self):
         super().__init__()
 
@@ -393,7 +393,7 @@ class RightMenu(QWidget):
             pixmap = QPixmap(f'{StyleImageMenu.STYLE_IMAGE_RESULTS}/result-{i - 1}.png')
             scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio,
                                           Qt.TransformationMode.SmoothTransformation)
-            images[StyleImageMenu.num_of_results - i] .setPixmap(QPixmap(scaled_pixmap))
+            images[StyleImageMenu.num_of_results - i].setPixmap(QPixmap(scaled_pixmap))
 
         self.right_menu_layout.addStretch()
 

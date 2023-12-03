@@ -1,7 +1,7 @@
 import tensorflow as tf
 import cv2 as cv
 import urllib
-
+import requests
 
 def load_img(path_to_img: str):
     """ Function to load an image from a file, and add a batch dimension
@@ -21,7 +21,7 @@ def load_img_from_url(url: str):
         :param url
         :return image with added batch dimension:
         """
-    img = urllib.request.urlopen(url).read()
+    img = requests.get(url).content
     img = tf.io.decode_image(img, channels=3)
     img = tf.image.convert_image_dtype(img, tf.float32)
     img = img[tf.newaxis, :]
